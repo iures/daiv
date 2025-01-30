@@ -67,6 +67,7 @@ This command will:
   bakuri standup [flags]
 ```
 
+```log
 Flags:
   -h, --help                   help for standup
       --jira-project string    Jira project ID
@@ -76,7 +77,7 @@ Flags:
 
 Global Flags:
       --config string   config file (default is $HOME/.bakuri.yaml)
-
+```
 
 ## Troubleshooting Section:
 Common issues and their solutions, such as:
