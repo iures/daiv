@@ -67,6 +67,8 @@ This command will:
   bakuri standup [flags]
 ```
 
+If you want, you can override most configuration parameters with flags.
+
 ```log
 Flags:
   -h, --help                   help for standup
