@@ -1,11 +1,10 @@
 package cmd
 
 import (
+	"bakuri/internal/standup"
 	"fmt"
 	"os"
-	"time"
 
-	jira "github.com/andygrunwald/go-jira"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -22,102 +21,16 @@ var standupCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateConfig(); err != nil {
 			fmt.Println(err)
-
 			os.Exit(1)
 		}
 
-		jiraUsername := viper.GetString("jira.username")
-		jiraToken := viper.GetString("jira.token")
+		jiraReport := standup.NewJiraReport()
 
-		tp := jira.BasicAuthTransport{
-			Username: jiraUsername,
-			Password: jiraToken,
-		}
-
-		jiraURL := viper.GetString("jira.url")
-		
-		client, err := jira.NewClient(tp.Client(), jiraURL)
-		if err != nil {
-			fmt.Println("Error creating Jira client:", err)
-			return
-		}
-	
-		projectId := viper.GetString("jira.project")
-
-		searchString := fmt.Sprintf(`
-			assignee = currentUser()
-			AND project = %s
-			AND status != Closed
-			AND sprint IN openSprints()
-			AND updated > -1d
-		`, projectId)
-
-		issues, err := getAllIssues(client, searchString)
-		if err != nil {
-			fmt.Println("Error getting issues:", err)
-			return
-		}
-
-		if len(issues) == 0 {
-			fmt.Println("No issues found")
-			return
-		} else {
-			fmt.Printf("Found %d issues\n\n\n", len(issues))
-		}
-
-		// Print all issues's description
-		for _, issue := range issues {
-			fmt.Println("\n\n--------------------------------")
-			fmt.Printf("Issue: %s\n", issue.Key)
-			fmt.Printf("\tSummary: %s\n", issue.Fields.Summary)
-			fmt.Printf("\tStatus: %s\n", issue.Fields.Status.Name)
-
-			yesterday := time.Now().AddDate(0, 0, -1)
-
-			if issue.Fields.Comments != nil {
-				fmt.Println("\tComments:")
-				for _, comment := range issue.Fields.Comments.Comments {
-					fmt.Printf(
-						"\t\t%v - %v: \n %s\n\n",
-						comment.Created,
-						comment.Author.DisplayName,
-						comment.Body,
-					)
-				}
-			}
-
-			for _, changelogHistory := range issue.Changelog.Histories {
-				if changelogHistory.Created > yesterday.Format(time.RFC3339) {
-					for _, changelogItem := range changelogHistory.Items {
-						fmt.Println("\tChange Log:")
-						fmt.Printf("\t\tCreated: %s\n", changelogHistory.Created)
-						fmt.Printf("\t\tAuthor: %s\n", changelogHistory.Author.DisplayName)
-						fmt.Printf("\t\tField: %s\n", changelogItem.Field)
-						fmt.Printf("\t\tFrom String: %s\n", changelogItem.FromString)
-						fmt.Printf("\t\tTo String: %s\n", changelogItem.ToString)
-					}
-				}
-			}
+		if err := jiraReport.Print(); err != nil {
+			fmt.Printf("Error generating report: %v\n", err)
+			os.Exit(1)
 		}
 	},
-}
-
-func getAllIssues(client *jira.Client, searchString string) ([]jira.Issue, error) {
-	opt := &jira.SearchOptions{
-		MaxResults: 100,
-		Expand:     "changelog",
-		Fields:     []string{"summary", "description", "status", "changelog", "comment"},
-	}
-
-	issues, resp, err := client.Issue.Search(searchString, opt)
-
-	fmt.Printf("Response: %v\n", resp)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return issues, nil
 }
 
 func validateConfig() error {
