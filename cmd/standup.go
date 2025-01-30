@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bakuri/internal/llm"
 	"bakuri/internal/standup"
 	"fmt"
 	"os"
@@ -32,7 +33,20 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println(report)
+		prompt := fmt.Sprintf("Generate a standup report for the current day based on activity in the watched repositories: %s\n", report)
+		llmClient, err := llm.NewClient()
+		if err != nil {
+			fmt.Printf("Error creating LLM client: %v\n", err)
+			os.Exit(1)
+		}
+
+		finalReport, err := llmClient.GenerateFromSinglePrompt(prompt)
+		if err != nil {
+			fmt.Printf("Error generating report: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(finalReport)
 	},
 }
 
@@ -65,6 +79,7 @@ func init() {
 	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
 
 	// Also check for environment variables
+	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")
 	viper.BindEnv("jira.token", "JIRA_API_TOKEN")
 	viper.BindEnv("jira.username", "JIRA_USERNAME")
 	viper.BindEnv("jira.url", "JIRA_URL")
