@@ -26,10 +26,13 @@ var standupCmd = &cobra.Command{
 
 		jiraReport := standup.NewJiraReport()
 
-		if err := jiraReport.Print(); err != nil {
+		report, err := jiraReport.Render()
+		if err != nil {
 			fmt.Printf("Error generating report: %v\n", err)
 			os.Exit(1)
 		}
+
+		fmt.Println(report)
 	},
 }
 

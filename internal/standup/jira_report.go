@@ -3,6 +3,7 @@ package standup
 import (
 	"bakuri/internal/jira"
 	"fmt"
+	"strings"
 	"time"
 
 	goJira "github.com/andygrunwald/go-jira"
@@ -22,19 +23,19 @@ func NewJiraReport() *JiraReport {
 	}
 }
 
-func (r *JiraReport) Print() error {
+func (r *JiraReport) Render() (string, error) {
 	if err := r.fetchIssues(); err != nil {
-		return fmt.Errorf("failed to fetch issues: %w", err)
+		return "", fmt.Errorf("failed to fetch issues: %w", err)
 	}
 
 	if len(r.Issues) == 0 {
-		fmt.Println("No issues found")
-		return nil
+		return "No issues found", nil
 	}
 
-	fmt.Printf("Found %d issues\n\n", len(r.Issues))
-	r.printIssues()
-	return nil
+	var report strings.Builder
+	fmt.Fprintf(&report, "Found %d issues\n\n", len(r.Issues))
+	r.renderIssues(&report)
+	return report.String(), nil
 }
 
 func (r *JiraReport) fetchIssues() error {
@@ -68,29 +69,29 @@ func (r *JiraReport) fetchIssues() error {
 	return nil
 }
 
-func (r *JiraReport) printIssues() {
+func (r *JiraReport) renderIssues(report *strings.Builder) {
 	for _, issue := range r.Issues {
-		fmt.Println("\n--------------------------------")
-		r.printIssueDetails(issue)
-		r.printComments(issue)
-		r.printChangelog(issue)
+		fmt.Fprintln(report, "\n--------------------------------")
+		r.renderIssueDetails(report, issue)
+		r.renderComments(report, issue)
+		r.renderChangelog(report, issue)
 	}
 }
 
-func (r *JiraReport) printIssueDetails(issue goJira.Issue) {
-	fmt.Printf("Issue: %s\n", issue.Key)
-	fmt.Printf("  - Summary: %s\n", issue.Fields.Summary)
-	fmt.Printf("  - Status: %s\n", issue.Fields.Status.Name)
+func (r *JiraReport) renderIssueDetails(report *strings.Builder, issue goJira.Issue) {
+	fmt.Fprintf(report, "Issue: %s\n", issue.Key)
+	fmt.Fprintf(report, "  - Summary: %s\n", issue.Fields.Summary)
+	fmt.Fprintf(report, "  - Status: %s\n", issue.Fields.Status.Name)
 }
 
-func (r *JiraReport) printComments(issue goJira.Issue) {
+func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue) {
 	if issue.Fields.Comments == nil {
 		return
 	}
 
-	fmt.Println("\tComments:")
+	fmt.Fprintln(report, "  - Comments:")
 	for _, comment := range issue.Fields.Comments.Comments {
-		fmt.Printf("    %v - %v: \n %s\n\n",
+		fmt.Fprintf(report, "     %v - %v: \n       %s\n\n",
 			comment.Created,
 			comment.Author.DisplayName,
 			comment.Body,
@@ -98,13 +99,12 @@ func (r *JiraReport) printComments(issue goJira.Issue) {
 	}
 }
 
-func (r *JiraReport) printChangelog(issue goJira.Issue) {
+func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue) {
 	for _, history := range issue.Changelog.Histories {
-		// parse example: 2024-09-11T17:27:32.642-0400
 		layout := "2006-01-02T15:04:05.000-0700"
 		createdTime, err := time.Parse(layout, history.Created)
 		if err != nil {
-			fmt.Printf("Failed to parse created time: %v\n", err)
+			fmt.Fprintf(report, "Failed to parse created time: %v\n", err)
 			continue
 		}
 
@@ -112,13 +112,13 @@ func (r *JiraReport) printChangelog(issue goJira.Issue) {
 			continue
 		}
 
-		fmt.Println("  - Change Log:")
+		fmt.Fprintln(report, "  - Change Log:")
 		for _, item := range history.Items {
-			fmt.Printf("    Created: %s\n", history.Created)
-			fmt.Printf("    Author: %s\n", history.Author.DisplayName)
-			fmt.Printf("    Field: %s\n", item.Field)
-			fmt.Printf("    From: %s\n", item.FromString)
-			fmt.Printf("    To: %s\n", item.ToString)
+			fmt.Fprintf(report, "    Created: %s\n", history.Created)
+			fmt.Fprintf(report, "    Author: %s\n", history.Author.DisplayName)
+			fmt.Fprintf(report, "    Field: %s\n", item.Field)
+			fmt.Fprintf(report, "    From: %s\n", item.FromString)
+			fmt.Fprintf(report, "    To: %s\n", item.ToString)
 		}
 	}
 }
