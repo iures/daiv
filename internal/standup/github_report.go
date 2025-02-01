@@ -40,18 +40,7 @@ func NewGithubClient() (*github.Client, error) {
 		return nil, err
 	}
 
-	authToken := github.BasicAuthTransport{ Username: "jason", Password: token, }
-	client := github.NewClient(authToken.Client())
-	
-	// Test the authentication
-	ctx := context.Background()
-	user, _, err := client.Users.Get(ctx, "")
-	if err != nil {
-		fmt.Printf("\nerror: %v\n", err)
-		return nil, err
-	}
-
-	fmt.Printf("User: %v\n", github.Stringify(user))
+	client := github.NewClient(nil).WithAuthToken(token)
 
 	return client, nil
 }
@@ -73,55 +62,69 @@ func (g *GitHubReport) Render() (string, error) {
 	ctx := context.Background()
 	var report strings.Builder
 
-	// Get yesterday's date
-	yesterday := time.Now().AddDate(0, 0, -1)
-	
-	for _, repo := range g.repos {
-		// Get PRs updated yesterday
-		opts := &github.PullRequestListOptions{
-			State: "open",
-			ListOptions: github.ListOptions{
-				PerPage: 100,
-			},
-		}
-		
-		prs, _, err := g.client.PullRequests.List(ctx, g.org, repo, opts)
-		if err != nil {
-			return "", fmt.Errorf("error fetching PRs for %s/%s: %v", g.org, repo, err)
-		}
+	// Get yesterday's date boundaries
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	startOfYesterday := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-		report.WriteString(fmt.Sprintf("\nRepository: %s\n", repo))
-		
-		for _, pr := range prs {
-			// Check if PR was updated yesterday
-			if pr.GetUpdatedAt().Year() == yesterday.Year() &&
-				pr.GetUpdatedAt().Month() == yesterday.Month() &&
-				pr.GetUpdatedAt().Day() == yesterday.Day() {
-				
-				report.WriteString(fmt.Sprintf("- PR #%d: %s (Status: %s)\n",
-					pr.GetNumber(),
-					pr.GetTitle(),
-					pr.GetState()))
+	user, _, err := g.client.Users.Get(ctx, "")
+	if err != nil {
+		return "", fmt.Errorf("error fetching user: %v", err)
+	}
+	myUsername := user.GetLogin()
+
+	// Fetch events performed by the user
+	events, _, err := g.client.Activity.ListEventsPerformedByUser(ctx, myUsername, false, &github.ListOptions{PerPage: 100})
+	if err != nil {
+		return "", fmt.Errorf("error fetching events for user %s: %v", myUsername, err)
+	}
+
+	report.WriteString(fmt.Sprintf("\nGitHub Activity for %s (from %s to %s):\n", myUsername, startOfYesterday.Format("2006-01-02"), startOfToday.Format("2006-01-02")))
+	eventFound := false
+
+	for _, event := range events {
+		if event.CreatedAt.After(startOfYesterday) && event.CreatedAt.Before(startOfToday) {
+			eventFound = true
+			// Switch based on event type to display desired information
+			switch event.GetType() {
+			case "PushEvent":
+				// Display commit information from PushEvent, if available
+				if payload, ok := event.Payload().(*github.PushEvent); ok {
+					repoName := event.GetRepo().GetName()
+
+					for _, commit := range payload.Commits {
+						report.WriteString(fmt.Sprintf("- PushEvent in %s: %s (Message: %s)\n",
+							repoName,
+							commit.GetSHA()[:7],
+							commit.GetMessage()))
+					}
+				} else {
+					report.WriteString(fmt.Sprintf("- PushEvent in %s at %s\n", event.GetRepo().GetName(), event.GetCreatedAt().Format(time.RFC1123)))
+				}
+			case "PullRequestEvent":
+				// Display pull request information from PullRequestEvent, if available
+				if payload, ok := event.Payload().(*github.PullRequestEvent); ok {
+					repoName := event.GetRepo().GetName()
+					action := payload.GetAction()
+					pr := payload.GetPullRequest()
+					report.WriteString(fmt.Sprintf("- PullRequestEvent in %s: PR #%d %s - %s\n",
+						repoName, pr.GetNumber(), action, pr.GetTitle()))
+				} else {
+					report.WriteString(fmt.Sprintf("- PullRequestEvent in %s at %s\n", event.GetRepo().GetName(), event.GetCreatedAt().Format(time.RFC1123)))
+				}
+			default:
+				// For other event types, just print a generic line with event type and repo
+				report.WriteString(fmt.Sprintf("- %s in %s at %s\n",
+					event.GetType(),
+					event.GetRepo().GetName(),
+					event.GetCreatedAt().Format(time.RFC1123)))
 			}
 		}
+	}
 
-		// Get commits from yesterday
-		commits, _, err := g.client.Repositories.ListCommits(ctx, g.org, repo, &github.CommitsListOptions{
-			Since: yesterday,
-			Until: time.Now(),
-		})
-		if err != nil {
-			return "", fmt.Errorf("error fetching commits for %s/%s: %v", g.org, repo, err)
-		}
-
-		if len(commits) > 0 {
-			report.WriteString("\nCommits:\n")
-			for _, commit := range commits {
-				report.WriteString(fmt.Sprintf("- %s: %s\n",
-					commit.GetSHA()[:7],
-					commit.GetCommit().GetMessage()))
-			}
-		}
+	if !eventFound {
+		report.WriteString("\nNo activity found for yesterday.\n")
 	}
 
 	return report.String(), nil
