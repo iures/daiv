@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -26,6 +27,10 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		bar := progressbar.Default(
+			-1,
+			"Generating Jira report",
+		)
 
 		jiraReport := standup.NewJiraReport()
 		jiraContent, err := jiraReport.Render()
@@ -33,6 +38,8 @@ var standupCmd = &cobra.Command{
 			fmt.Printf("Error generating Jira report: %v\n", err)
 			os.Exit(1)
 		}
+
+		bar.Describe("Generating GitHub report")
 
 		githubReport := standup.NewGitHubReport()
 		githubContent, err := githubReport.Render()
@@ -42,9 +49,9 @@ var standupCmd = &cobra.Command{
 		}
 
 		prompt := fmt.Sprintf( `
-Generate a standup report for the current day based on:
+Generate a standup report for the current day based on. 
+Just respond with the report and nothing else.
 It should follow the following format:
---
 ## Yesterday:
 - xxx
 - yyy
@@ -54,7 +61,6 @@ It should follow the following format:
 - yyy
 
 No blockers
---
 
 Context:
 
@@ -68,6 +74,8 @@ GitHub Activity:
 			githubContent,
 		)
 
+		bar.Describe("Generating final report")
+
 		llmClient, err := llm.NewClient()
 		if err != nil {
 			fmt.Printf("Error creating LLM client: %v\n", err)
@@ -79,6 +87,8 @@ GitHub Activity:
 			fmt.Printf("Error generating report: %v\n", err)
 			os.Exit(1)
 		}
+
+		bar.Clear()
 
 		fmt.Println(finalReport)
 	},
