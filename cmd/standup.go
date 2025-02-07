@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bakuri/internal/llm"
 	"bakuri/internal/standup"
 	"fmt"
 	"os"
@@ -25,51 +26,61 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Get both Jira and GitHub reports
-		jiraReport := standup.NewJiraReport()
-		githubReport := standup.NewGitHubReport()
 
+		jiraReport := standup.NewJiraReport()
 		jiraContent, err := jiraReport.Render()
 		if err != nil {
 			fmt.Printf("Error generating Jira report: %v\n", err)
 			os.Exit(1)
 		}
 
+		githubReport := standup.NewGitHubReport()
 		githubContent, err := githubReport.Render()
 		if err != nil {
 			fmt.Printf("Error generating GitHub report: %v\n", err)
 			os.Exit(1)
 		}
 
-		prompt := fmt.Sprintf(
-			`
-				Generate a standup report for the current day based on:
+		prompt := fmt.Sprintf( `
+Generate a standup report for the current day based on:
+It should follow the following format:
+--
+## Yesterday:
+- xxx
+- yyy
 
-				Jira Activity:
-				%s
+## Today:
+- xxx
+- yyy
 
-				GitHub Activity:
-				%s
+No blockers
+--
+
+Context:
+
+## Jira Activity:
+%s
+
+GitHub Activity:
+%s
 			`,
 			jiraContent,
 			githubContent,
 		)
 
-		fmt.Println(prompt)
+		llmClient, err := llm.NewClient()
+		if err != nil {
+			fmt.Printf("Error creating LLM client: %v\n", err)
+			os.Exit(1)
+		}
 
-		// llmClient, err := llm.NewClient()
-		// if err != nil {
-		// 	fmt.Printf("Error creating LLM client: %v\n", err)
-		// 	os.Exit(1)
-		// }
+		finalReport, err := llmClient.GenerateFromSinglePrompt(prompt)
+		if err != nil {
+			fmt.Printf("Error generating report: %v\n", err)
+			os.Exit(1)
+		}
 
-		// finalReport, err := llmClient.GenerateFromSinglePrompt(prompt)
-		// if err != nil {
-		// 	fmt.Printf("Error generating report: %v\n", err)
-		// 	os.Exit(1)
-		// }
-
-		// fmt.Println(finalReport)
+		fmt.Println(finalReport)
 	},
 }
 
@@ -87,7 +98,6 @@ func validateConfig() error {
 		}
 	}
 
-	// Validate that repositories is a non-empty list
 	repos := viper.GetStringSlice("github.repositories")
 	if len(repos) == 0 {
 		return fmt.Errorf("github.repositories must contain at least one repository")

@@ -68,7 +68,7 @@ func (g *GitHubReport) Render() (string, error) {
 				PerPage: 100,
 			},
 		}
-		
+
 		prs, _, err := g.client.PullRequests.List(ctx, g.org, repo, opts)
 		if err != nil {
 			return "", fmt.Errorf("error fetching PRs for %s/%s: %v", g.org, repo, err)
@@ -89,23 +89,29 @@ func (g *GitHubReport) Render() (string, error) {
 						pr.GetState(),
 					),
 				)
-			}
-		}
 
-		commits, _, err := g.client.Repositories.ListCommits(ctx, g.org, repo, &github.CommitsListOptions{
-			Since: yesterday,
-			Author: g.username,
-		})
-		if err != nil {
-			return "", fmt.Errorf("error fetching commits for %s/%s: %v", g.org, repo, err)
-		}
+				prCommits, _, err := g.client.PullRequests.ListCommits(ctx, g.org, repo, pr.GetNumber(), nil)
+				if err != nil {
+					return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", pr.GetNumber(), g.org, repo, err)
+				}
 
-		if len(commits) > 0 {
-			report.WriteString("\nCommits:\n")
-			for _, commit := range commits {
-				report.WriteString(fmt.Sprintf("- %s: %s\n",
-					commit.GetSHA()[:7],
-					commit.GetCommit().GetMessage()))
+				var relevantCommits []*github.RepositoryCommit
+				for _, commit := range prCommits {
+					if commit.Author != nil && commit.Author.GetLogin() == g.username && commit.GetCommit().GetCommitter().GetDate().After(yesterday) {
+						relevantCommits = append(relevantCommits, commit)
+					}
+				}
+
+				if len(relevantCommits) > 0 {
+					report.WriteString("  Commits:\n")
+					for _, commit := range relevantCommits {
+						report.WriteString(fmt.Sprintf("    - %s - %s: %s\n",
+							commit.GetSHA()[:7],
+							commit.GetCommit().GetCommitter().GetDate().Format("2006-01-02 15:04:05"),
+							commit.GetCommit().GetMessage(),
+						))
+					}
+				}
 			}
 		}
 	}
