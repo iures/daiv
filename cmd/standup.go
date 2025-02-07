@@ -119,6 +119,7 @@ func init() {
 	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
 	
 	// Bind GitHub flags
+	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
 	viper.BindPFlag("github.organization", standupCmd.Flags().Lookup("github-organization"))
 	viper.BindPFlag("github.repositories", standupCmd.Flags().Lookup("github-repositories"))
 
@@ -130,4 +131,5 @@ func init() {
 	viper.BindEnv("jira.project", "JIRA_PROJECT")
 	viper.BindEnv("github.organization", "GITHUB_ORG")
 	viper.BindEnv("github.repositories", "GITHUB_REPOS") // Comma-separated list in env var
+	viper.BindEnv("github.username", "GITHUB_USERNAME")
 }

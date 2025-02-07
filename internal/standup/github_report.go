@@ -33,14 +33,15 @@ func NewGitHubReport() *GitHubReport {
 }
 
 func NewGithubClient() (*github.Client, error) {
-	// Try to get token from gh cli
 	token, err := getGhCliToken()
 	if err != nil {
 		fmt.Printf("Error getting GitHub token: %v\n", err)
 		return nil, err
 	}
 
-	authToken := github.BasicAuthTransport{ Username: "jason", Password: token, }
+	username := viper.GetString("github.username")
+
+	authToken := github.BasicAuthTransport{ Username: username, Password: token, }
 	client := github.NewClient(authToken.Client())
 	
 	// Test the authentication
@@ -73,7 +74,6 @@ func (g *GitHubReport) Render() (string, error) {
 	ctx := context.Background()
 	var report strings.Builder
 
-	// Get yesterday's date
 	yesterday := time.Now().AddDate(0, 0, -1)
 	
 	for _, repo := range g.repos {
@@ -93,7 +93,6 @@ func (g *GitHubReport) Render() (string, error) {
 		report.WriteString(fmt.Sprintf("\nRepository: %s\n", repo))
 		
 		for _, pr := range prs {
-			// Check if PR was updated yesterday
 			if pr.GetUpdatedAt().Year() == yesterday.Year() &&
 				pr.GetUpdatedAt().Month() == yesterday.Month() &&
 				pr.GetUpdatedAt().Day() == yesterday.Day() {
