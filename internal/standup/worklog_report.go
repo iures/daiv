@@ -38,10 +38,9 @@ func (w *WorklogReport) Render() (string, error) {
 	}
 
 	var report strings.Builder
-	threshold := time.Now().AddDate(0, 0, -1)
 
 	for _, item := range items {
-		if utils.IsDateOnOrAfter(item.Timestamp, threshold) {
+		if utils.IsDateTimeInThreshold(item.Timestamp) {
 			tagStr := ""
 			if len(item.Tags) > 0 {
 				tagStr = fmt.Sprintf(" [%s]", strings.Join(item.Tags, ", "))

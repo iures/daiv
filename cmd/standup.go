@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
@@ -145,6 +146,17 @@ func validateConfig() error {
 		}
 	}
 
+	// Validate time formats
+	_, err := time.Parse(time.RFC3339, viper.GetString("fromTime"))
+	if err != nil {
+		return fmt.Errorf("invalid from-time format. Must be RFC3339 format: %v", err)
+	}
+
+	_, err = time.Parse(time.RFC3339, viper.GetString("toTime"))
+	if err != nil {
+		return fmt.Errorf("invalid to-time format. Must be RFC3339 format: %v", err)
+	}
+
 	return nil
 }
 
@@ -153,7 +165,11 @@ func init() {
 
 	// Set default values
 	viper.SetDefault("jira.url", "https://ltvco.atlassian.net")
-	
+
+	// Update default time settings with flags
+	standupCmd.Flags().String("from-time", time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour).Format(time.RFC3339), "Start time for the report (RFC3339 format)")
+	standupCmd.Flags().String("to-time", time.Now().Truncate(24 * time.Hour).Format(time.RFC3339), "End time for the report (RFC3339 format)")
+
 	// Add flags that can override config file settings
 	standupCmd.Flags().String("jira-username", "", "Jira username (email)")
 	standupCmd.Flags().String("jira-token", "", "Jira API token")
@@ -176,6 +192,10 @@ func init() {
 	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
 	viper.BindPFlag("github.organization", standupCmd.Flags().Lookup("github-organization"))
 	viper.BindPFlag("github.repositories", standupCmd.Flags().Lookup("github-repositories"))
+
+	// Bind time flags to viper
+	viper.BindPFlag("fromTime", standupCmd.Flags().Lookup("from-time"))
+	viper.BindPFlag("toTime", standupCmd.Flags().Lookup("to-time"))
 
 	// Environment variables
 	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")

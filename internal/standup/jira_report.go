@@ -92,7 +92,6 @@ func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue)
 	}
 
 	fmt.Fprintln(report, "## Comments:")
-	yesterday := time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour)
 
 	slices.SortFunc(issue.Fields.Comments.Comments, func(a, b *goJira.Comment) int {
 		aTime, err := time.Parse("2006-01-02T15:04:05.000-0700", a.Created)
@@ -115,11 +114,11 @@ func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue)
 			continue
 		}
 
-		if utils.IsDateOnOrAfter(createdTime, yesterday) {
+		if utils.IsDateTimeInThreshold(createdTime) {
 			fmt.Fprintf(
 				report,
 				"%v - %v: \n```\n%s\n```\n\n",
-				comment.Created,
+				createdTime.Format("2006-01-02 15:04:05"),
 				comment.Author.DisplayName,
 				comment.Body,
 			)
