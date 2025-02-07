@@ -16,10 +16,19 @@ type GitHubReport struct {
 	client *github.Client
 	org    string
 	repos  []string
+	username string
 }
 
 func NewGitHubReport() *GitHubReport {
-	client, err := NewGithubClient()
+	username := viper.GetString("github.username")
+	token, err := getGhCliToken()
+	if err != nil {
+		fmt.Printf("Error getting GitHub token: %v\n", err)
+		os.Exit(1)
+	}
+
+	authToken := github.BasicAuthTransport{ Username: username, Password: token, }
+	client := github.NewClient(authToken.Client())
 	if err != nil {
 		fmt.Printf("Error creating GitHub client: %v\n", err)
 		os.Exit(1)
@@ -29,32 +38,8 @@ func NewGitHubReport() *GitHubReport {
 		client: client,
 		org:    viper.GetString("github.organization"),
 		repos:  viper.GetStringSlice("github.repositories"),
+		username: username,
 	}
-}
-
-func NewGithubClient() (*github.Client, error) {
-	token, err := getGhCliToken()
-	if err != nil {
-		fmt.Printf("Error getting GitHub token: %v\n", err)
-		return nil, err
-	}
-
-	username := viper.GetString("github.username")
-
-	authToken := github.BasicAuthTransport{ Username: username, Password: token, }
-	client := github.NewClient(authToken.Client())
-	
-	// Test the authentication
-	ctx := context.Background()
-	user, _, err := client.Users.Get(ctx, "")
-	if err != nil {
-		fmt.Printf("\nerror: %v\n", err)
-		return nil, err
-	}
-
-	fmt.Printf("User: %v\n", github.Stringify(user))
-
-	return client, nil
 }
 
 func getGhCliToken() (string, error) {
@@ -75,7 +60,7 @@ func (g *GitHubReport) Render() (string, error) {
 	var report strings.Builder
 
 	yesterday := time.Now().AddDate(0, 0, -1)
-	
+
 	for _, repo := range g.repos {
 		opts := &github.PullRequestListOptions{
 			State: "open",
@@ -92,21 +77,24 @@ func (g *GitHubReport) Render() (string, error) {
 		report.WriteString(fmt.Sprintf("\nRepository: %s\n", repo))
 		
 		for _, pr := range prs {
-			if pr.GetUpdatedAt().Year() == yesterday.Year() &&
+			if pr.User.GetLogin() == g.username &&
+				pr.GetUpdatedAt().Year() == yesterday.Year() &&
 				pr.GetUpdatedAt().Month() == yesterday.Month() &&
-				pr.GetUpdatedAt().Day() == yesterday.Day() {
-				
-				report.WriteString(fmt.Sprintf("- PR #%d: %s (Status: %s)\n",
-					pr.GetNumber(),
-					pr.GetTitle(),
-					pr.GetState()))
+				pr.GetUpdatedAt().Day() >= yesterday.Day() {
+
+				report.WriteString(
+					fmt.Sprintf("- PR #%d: %s (Status: %s)\n",
+						pr.GetNumber(),
+						pr.GetTitle(),
+						pr.GetState(),
+					),
+				)
 			}
 		}
 
 		commits, _, err := g.client.Repositories.ListCommits(ctx, g.org, repo, &github.CommitsListOptions{
 			Since: yesterday,
-			Until: time.Now(),
-			Author: viper.GetString("github.username"),
+			Author: g.username,
 		})
 		if err != nil {
 			return "", fmt.Errorf("error fetching commits for %s/%s: %v", g.org, repo, err)
