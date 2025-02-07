@@ -1,6 +1,7 @@
 package standup
 
 import (
+	"bakuri/internal/utils"
 	"context"
 	"fmt"
 	"os"
@@ -99,7 +100,7 @@ func (g *GitHubReport) shouldReportPullRequest(pr *github.PullRequest, threshold
 	if pr.User.GetLogin() != g.username {
 		return false
 	}
-	return isDateOnOrAfter(pr.GetUpdatedAt().Time, threshold)
+	return utils.IsDateOnOrAfter(pr.GetUpdatedAt().Time, threshold)
 }
 
 func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *github.PullRequest, threshold time.Time) (string, error) {
@@ -118,14 +119,6 @@ func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *githu
 	}
 
 	return commitReport.String(), nil
-}
-
-func isDateOnOrAfter(date, threshold time.Time) bool {
-	year, month, day := date.Date()
-	thYear, thMonth, thDay := threshold.Date()
-	dateOnly := time.Date(year, month, day, 0, 0, 0, 0, date.Location())
-	thresholdOnly := time.Date(thYear, thMonth, thDay, 0, 0, 0, 0, threshold.Location())
-	return !dateOnly.Before(thresholdOnly)
 }
 
 func filterRelevantCommits(commits []*github.RepositoryCommit, username string, threshold time.Time) []*github.RepositoryCommit {

@@ -5,6 +5,7 @@ import (
 	"bakuri/internal/standup"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
@@ -48,6 +49,15 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		bar.Describe("Generating filesystem report")
+
+		worklogReport := standup.NewWorklogReport()
+		worklogContent, err := worklogReport.Render()
+		if err != nil {
+			fmt.Printf("Error generating worklog report: %v\n", err)
+			os.Exit(1)
+		}
+
 		prompt := fmt.Sprintf( `
 Generate a standup report for the current day based on. 
 Just respond with the report and nothing else.
@@ -68,30 +78,38 @@ Context:
 ## Jira Activity:
 %s
 
-GitHub Activity:
+## GitHub Activity:
+%s
+
+## Manual Work Log:
 %s
 			`,
 			jiraContent,
 			githubContent,
+			worklogContent,
 		)
 
 		bar.Describe("Generating final report")
 
-		llmClient, err := llm.NewClient()
-		if err != nil {
-			fmt.Printf("Error creating LLM client: %v\n", err)
-			os.Exit(1)
+		if viper.GetBool("prompt") {
+			bar.Clear()
+			fmt.Println(prompt)
+		} else {
+			llmClient, err := llm.NewClient()
+			if err != nil {
+				fmt.Printf("Error creating LLM client: %v\n", err)
+				os.Exit(1)
+			}
+
+			finalReport, err := llmClient.GenerateFromSinglePrompt(prompt)
+			if err != nil {
+				fmt.Printf("Error generating report: %v\n", err)
+				os.Exit(1)
+			}
+
+			bar.Clear()
+			fmt.Println(finalReport)
 		}
-
-		finalReport, err := llmClient.GenerateFromSinglePrompt(prompt)
-		if err != nil {
-			fmt.Printf("Error generating report: %v\n", err)
-			os.Exit(1)
-		}
-
-		bar.Clear()
-
-		fmt.Println(finalReport)
 	},
 }
 
@@ -114,6 +132,13 @@ func validateConfig() error {
 		return fmt.Errorf("github.repositories must contain at least one repository")
 	}
 
+	if path := viper.GetString("worklog.path"); path != "" {
+		dir := filepath.Dir(path)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return fmt.Errorf("worklog directory does not exist: %s", dir)
+		}
+	}
+
 	return nil
 }
 
@@ -128,7 +153,8 @@ func init() {
 	standupCmd.Flags().String("jira-token", "", "Jira API token")
 	standupCmd.Flags().String("jira-url", "", "Jira instance URL")
 	standupCmd.Flags().String("jira-project", "", "Jira project ID")
-	
+	standupCmd.Flags().String("worklog-path", "", "Path to the worklog file")
+
 	// Add GitHub-specific flags
 	standupCmd.Flags().String("github-organization", "", "GitHub organization name")
 	standupCmd.Flags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
@@ -138,7 +164,8 @@ func init() {
 	viper.BindPFlag("jira.token", standupCmd.Flags().Lookup("jira-token"))
 	viper.BindPFlag("jira.url", standupCmd.Flags().Lookup("jira-url"))
 	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
-	
+	viper.BindPFlag("worklog.path", standupCmd.Flags().Lookup("worklog-path"))
+
 	// Bind GitHub flags
 	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
 	viper.BindPFlag("github.organization", standupCmd.Flags().Lookup("github-organization"))
@@ -153,4 +180,5 @@ func init() {
 	viper.BindEnv("github.organization", "GITHUB_ORG")
 	viper.BindEnv("github.repositories", "GITHUB_REPOS") // Comma-separated list in env var
 	viper.BindEnv("github.username", "GITHUB_USERNAME")
+	viper.BindEnv("worklog.path", "WORKLOG_PATH")
 }
