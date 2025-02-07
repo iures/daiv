@@ -71,18 +71,24 @@ It should follow the following format:
 - xxx
 - yyy
 
-No blockers
+No blockers or Blocked by ...
 
 Context:
 
-## Jira Activity:
+# Jira Activity:
+
 %s
 
-## GitHub Activity:
+
+# GitHub Activity:
+
 %s
 
-## Manual Work Log:
+
+# Manual Work Log:
+
 %s
+
 			`,
 			jiraContent,
 			githubContent,

@@ -2,6 +2,7 @@ package standup
 
 import (
 	"bakuri/internal/jira"
+	"bakuri/internal/utils"
 	"fmt"
 	"strings"
 	"time"
@@ -33,7 +34,6 @@ func (r *JiraReport) Render() (string, error) {
 	}
 
 	var report strings.Builder
-	fmt.Fprintf(&report, "Found %d issues\n\n", len(r.Issues))
 	r.renderIssues(&report)
 	return report.String(), nil
 }
@@ -70,8 +70,10 @@ func (r *JiraReport) fetchIssues() error {
 }
 
 func (r *JiraReport) renderIssues(report *strings.Builder) {
-	for _, issue := range r.Issues {
-		fmt.Fprintln(report, "\n--------------------------------")
+	for i, issue := range r.Issues {
+		if i > 0 {
+			fmt.Fprintln(report, "\n--------------------------------\n")
+		}
 		r.renderIssueDetails(report, issue)
 		r.renderComments(report, issue)
 		r.renderChangelog(report, issue)
@@ -79,9 +81,8 @@ func (r *JiraReport) renderIssues(report *strings.Builder) {
 }
 
 func (r *JiraReport) renderIssueDetails(report *strings.Builder, issue goJira.Issue) {
-	fmt.Fprintf(report, "Issue: %s\n", issue.Key)
-	fmt.Fprintf(report, "  - Summary: %s\n", issue.Fields.Summary)
-	fmt.Fprintf(report, "  - Status: %s\n", issue.Fields.Status.Name)
+	fmt.Fprintf(report, "## Jira Issue: [%s] - %s\n", issue.Key, issue.Fields.Status.Name)
+	fmt.Fprintf(report, "%s\n", issue.Fields.Summary)
 }
 
 func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue) {
@@ -89,17 +90,34 @@ func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue)
 		return
 	}
 
-	fmt.Fprintln(report, "  - Comments:")
+	fmt.Fprintln(report, "## Comments:")
+	yesterday := time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour)
 	for _, comment := range issue.Fields.Comments.Comments {
-		fmt.Fprintf(report, "     %v - %v: \n       %s\n\n",
-			comment.Created,
-			comment.Author.DisplayName,
-			comment.Body,
-		)
+		createdTime, err := time.Parse("2006-01-02T15:04:05.000-0700", comment.Created)
+		if err != nil {
+			fmt.Fprintf(report, "Failed to parse created time: %v\n", err)
+			continue
+		}
+
+		if utils.IsDateOnOrAfter(createdTime, yesterday) {
+			fmt.Fprintf(
+				report,
+				"%v - %v: \n```\n%s\n```\n\n",
+				comment.Created,
+				comment.Author.DisplayName,
+				comment.Body,
+			)
+		}
 	}
 }
 
 func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue) {
+	if issue.Changelog == nil || len(issue.Changelog.Histories) == 0 {
+		return
+	}
+
+	fmt.Fprintln(report, "## Change Log:")
+
 	for _, history := range issue.Changelog.Histories {
 		layout := "2006-01-02T15:04:05.000-0700"
 		createdTime, err := time.Parse(layout, history.Created)
@@ -112,13 +130,15 @@ func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue
 			continue
 		}
 
-		fmt.Fprintln(report, "  - Change Log:")
 		for _, item := range history.Items {
-			fmt.Fprintf(report, "    Created: %s\n", history.Created)
-			fmt.Fprintf(report, "    Author: %s\n", history.Author.DisplayName)
-			fmt.Fprintf(report, "    Field: %s\n", item.Field)
-			fmt.Fprintf(report, "    From: %s\n", item.FromString)
-			fmt.Fprintf(report, "    To: %s\n", item.ToString)
+			fmt.Fprintf(
+				report, "%s - %s changed: %s from: %s to: %s\n\n",
+				createdTime.Format("2006-01-02 15:04:05"),
+				history.Author.DisplayName,
+				item.Field,
+				item.FromString,
+				item.ToString,
+			)
 		}
 	}
 }
