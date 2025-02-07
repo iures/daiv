@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v68/github"
 	"github.com/spf13/viper"
@@ -59,8 +58,6 @@ func (g *GitHubReport) Render() (string, error) {
 	ctx := context.Background()
 	var report strings.Builder
 
-	threshold := time.Now().AddDate(0, 0, -1)
-
 	for _, repo := range g.repos {
 		report.WriteString(fmt.Sprintf("\n\n# Repository: %s\n", repo))
 
@@ -70,10 +67,10 @@ func (g *GitHubReport) Render() (string, error) {
 		}
 
 		for _, pr := range prs {
-			if g.shouldReportPullRequest(pr, threshold) {
+			if g.shouldReportPullRequest(pr) {
 				report.WriteString(formatPullRequest(pr))
 
-				commitsReport, err := g.renderCommits(ctx, repo, pr, threshold)
+				commitsReport, err := g.renderCommits(ctx, repo, pr)
 				if err != nil {
 					return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", pr.GetNumber(), g.org, repo, err)
 				}
@@ -88,8 +85,11 @@ func (g *GitHubReport) Render() (string, error) {
 func (g *GitHubReport) fetchPullRequests(ctx context.Context, repo string) ([]*github.PullRequest, error) {
 	opts := &github.PullRequestListOptions{
 		State: "all",
+		Base:  "master",
+		Sort:  "updated",
+		Direction: "desc",
 		ListOptions: github.ListOptions{
-			PerPage: 50,
+			PerPage: 80,
 			Page:    0,
 		},
 	}
@@ -97,7 +97,7 @@ func (g *GitHubReport) fetchPullRequests(ctx context.Context, repo string) ([]*g
 	return prs, err
 }
 
-func (g *GitHubReport) shouldReportPullRequest(pr *github.PullRequest, threshold time.Time) bool {
+func (g *GitHubReport) shouldReportPullRequest(pr *github.PullRequest) bool {
 	if pr.User.GetLogin() != g.username {
 		return false
 	}
@@ -105,7 +105,7 @@ func (g *GitHubReport) shouldReportPullRequest(pr *github.PullRequest, threshold
 	return utils.IsDateTimeInThreshold(pr.GetUpdatedAt().Time)
 }
 
-func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *github.PullRequest, threshold time.Time) (string, error) {
+func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *github.PullRequest) (string, error) {
 	prCommits, _, err := g.client.PullRequests.ListCommits(ctx, g.org, repo, pr.GetNumber(), nil)
 	if err != nil {
 		return "", err
@@ -116,7 +116,7 @@ func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *githu
 	})
 
 	var commitReport strings.Builder
-	relevantCommits := filterRelevantCommits(prCommits, g.username, threshold)
+	relevantCommits := filterRelevantCommits(prCommits, g.username)
 	if len(relevantCommits) > 0 {
 		commitReport.WriteString("## Commits:\n\n")
 
@@ -128,7 +128,7 @@ func (g *GitHubReport) renderCommits(ctx context.Context, repo string, pr *githu
 	return commitReport.String(), nil
 }
 
-func filterRelevantCommits(commits []*github.RepositoryCommit, username string, threshold time.Time) []*github.RepositoryCommit {
+func filterRelevantCommits(commits []*github.RepositoryCommit, username string) []*github.RepositoryCommit {
 	var relevant []*github.RepositoryCommit
 	for _, commit := range commits {
 		if commit.Author != nil && commit.Author.GetLogin() == username && utils.IsDateTimeInThreshold(commit.GetCommit().GetCommitter().GetDate().Time) {
