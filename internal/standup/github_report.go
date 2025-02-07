@@ -77,7 +77,6 @@ func (g *GitHubReport) Render() (string, error) {
 	yesterday := time.Now().AddDate(0, 0, -1)
 	
 	for _, repo := range g.repos {
-		// Get PRs updated yesterday
 		opts := &github.PullRequestListOptions{
 			State: "open",
 			ListOptions: github.ListOptions{
@@ -104,10 +103,10 @@ func (g *GitHubReport) Render() (string, error) {
 			}
 		}
 
-		// Get commits from yesterday
 		commits, _, err := g.client.Repositories.ListCommits(ctx, g.org, repo, &github.CommitsListOptions{
 			Since: yesterday,
 			Until: time.Now(),
+			Author: viper.GetString("github.username"),
 		})
 		if err != nil {
 			return "", fmt.Errorf("error fetching commits for %s/%s: %v", g.org, repo, err)
