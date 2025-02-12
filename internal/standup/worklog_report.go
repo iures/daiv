@@ -1,7 +1,7 @@
 package standup
 
 import (
-	"bakuri/internal/utils"
+	"daiv/internal/utils"
 	"fmt"
 	"os"
 	"path/filepath"

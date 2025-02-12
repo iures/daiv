@@ -1,8 +1,8 @@
 package standup
 
 import (
-	"bakuri/internal/jira"
-	"bakuri/internal/utils"
+	"daiv/internal/jira"
+	"daiv/internal/utils"
 	"fmt"
 	"slices"
 	"strings"

@@ -3,6 +3,7 @@
 *.exe~
 *.dll
 *.so
+daiv
 out/**
 
 # Test binary, built with `go test -c`

@@ -1,6 +1,6 @@
 # Makefile for the Go project
 
-BUILD_OUTPUT=out/bakuri
+BUILD_OUTPUT=out/daiv
 
 .PHONY: all build run
 

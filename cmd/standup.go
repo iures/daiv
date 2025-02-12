@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"bakuri/internal/llm"
-	"bakuri/internal/standup"
+	"daiv/internal/llm"
+	"daiv/internal/standup"
 	"fmt"
 	"log/slog"
 	"os"

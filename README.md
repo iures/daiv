@@ -4,7 +4,7 @@ Bakuri is a command-line tool designed to streamline developer workflows and enh
 
 ## Features
 
-- Generate standup reports automatically (`bakuri standup`)
+- Generate standup reports automatically (`daiv standup`)
 - More features coming soon...
 
 ## Installation
@@ -12,22 +12,22 @@ Bakuri is a command-line tool designed to streamline developer workflows and enh
 ### Using Homebrew
 
 ```bash
-brew install bakuri
+brew install daiv
 
 ### Using Go
 
 ```bash
-go install github.com/iures/bakuri
+go install github.com/iures/daiv
 ```
 
 ## Configuration
 
 Bakuri requires some configuration to access your work tools. Create a config file at:
 
-`~/.config/bakuri/config.yaml` or `~/.bakuri.yaml`
+`~/.config/daiv/config.yaml` or `~/.daiv.yaml`
 
 ```yaml
-# ~/.config/bakuri/config.yaml or ~/.bakuri.yaml
+# ~/.config/daiv/config.yaml or ~/.daiv.yaml
 
 # Jira Configuration
 jira:
@@ -64,7 +64,7 @@ This command will:
 - Format it in a standup-friendly format
 
 ```bash
-  bakuri standup [flags]
+  daiv standup [flags]
 ```
 
 If you want, you can override most configuration parameters with flags.
@@ -78,14 +78,14 @@ Flags:
       --jira-username string   Jira username (email)
 
 Global Flags:
-      --config string   config file (default is $HOME/.bakuri.yaml)
+      --config string   config file (default is $HOME/.daiv.yaml)
 ```
 
 ## Troubleshooting Section:
 Common issues and their solutions, such as:
 
 ### Configuration file not found
-Make sure the config file is in the correct location: `~/.config/bakuri/config.yaml` or `~/.bakuri.yaml`
+Make sure the config file is in the correct location: `~/.config/daiv/config.yaml` or `~/.daiv.yaml`
 
 ### Authentication errors with Jira
 Make sure your Jira credentials are correct and have the necessary permissions.

@@ -4,7 +4,7 @@ Copyright © 2025 Iure Sales
 */
 package main
 
-import "bakuri/cmd"
+import "daiv/cmd"
 
 func main() {
 	cmd.Execute()

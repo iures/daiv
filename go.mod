@@ -1,4 +1,4 @@
-module bakuri
+module daiv
 
 go 1.22.0
 
