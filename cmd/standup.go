@@ -4,6 +4,7 @@ import (
 	"bakuri/internal/llm"
 	"bakuri/internal/standup"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -25,7 +26,8 @@ var standupCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateConfig(); err != nil {
-			fmt.Println(err)
+      slog.Error(err.Error())
+			// fmt.Println(err)
 			os.Exit(1)
 		}
 
@@ -177,6 +179,9 @@ func init() {
 	standupCmd.Flags().String("jira-project", "", "Jira project ID")
 	standupCmd.Flags().String("worklog-path", "", "Path to the worklog file")
 
+
+	standupCmd.Flags().String("llm-anthropic-apikey", "", "Anthropic API Key")
+
 	// Add GitHub-specific flags
 	standupCmd.Flags().String("github-organization", "", "GitHub organization name")
 	standupCmd.Flags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
@@ -187,6 +192,7 @@ func init() {
 	viper.BindPFlag("jira.url", standupCmd.Flags().Lookup("jira-url"))
 	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
 	viper.BindPFlag("worklog.path", standupCmd.Flags().Lookup("worklog-path"))
+  viper.BindPFlag("llm.anthropic.apikey", standupCmd.Flags().Lookup("llm-anthropic-apikey"))
 
 	// Bind GitHub flags
 	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
