@@ -26,15 +26,17 @@ var standupCmd = &cobra.Command{
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateConfig(); err != nil {
-      slog.Error(err.Error())
-			// fmt.Println(err)
+			slog.Error(err.Error())
 			os.Exit(1)
 		}
 
-		bar := progressbar.Default(
-			-1,
-			"Generating Jira report",
-		)
+		var bar *progressbar.ProgressBar
+		if !viper.GetBool("no-progress") {
+			bar = progressbar.Default(
+				-1,
+				"Generating Jira report",
+			)
+		}
 
 		jiraReport := standup.NewJiraReport()
 		jiraContent, err := jiraReport.Render()
@@ -43,7 +45,9 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		bar.Describe("Generating GitHub report")
+		if bar != nil {
+			bar.Describe("Generating GitHub report")
+		}
 
 		githubReport := standup.NewGitHubReport()
 		githubContent, err := githubReport.Render()
@@ -52,7 +56,9 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		bar.Describe("Generating filesystem report")
+		if bar != nil {
+			bar.Describe("Generating filesystem report")
+		}
 
 		worklogReport := standup.NewWorklogReport()
 		worklogContent, err := worklogReport.Render()
@@ -61,7 +67,7 @@ var standupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		prompt := fmt.Sprintf( `
+		prompt := fmt.Sprintf(`
 Generate a standup report for the current day based on. 
 Just respond with the report and nothing else.
 Make sure to include the correct Jira ticket number if available. (e.g. [PBR-1234])
@@ -98,10 +104,14 @@ Context:
 			worklogContent,
 		)
 
-		bar.Describe("Generating final report")
+		if bar != nil {
+			bar.Describe("Generating final report")
+		}
 
 		if viper.GetBool("prompt") {
-			bar.Clear()
+			if bar != nil {
+				bar.Clear()
+			}
 			fmt.Println(prompt)
 		} else {
 			llmClient, err := llm.NewClient()
@@ -116,7 +126,9 @@ Context:
 				os.Exit(1)
 			}
 
-			bar.Clear()
+			if bar != nil {
+				bar.Clear()
+			}
 			fmt.Println(finalReport)
 		}
 	},
@@ -124,12 +136,12 @@ Context:
 
 func validateConfig() error {
 	required := []string{
-		"jira.username", 
-		"jira.token", 
+		"jira.username",
+		"jira.token",
 		"jira.url",
 		"github.organization",
 	}
-	
+
 	for _, key := range required {
 		if viper.GetString(key) == "" {
 			return fmt.Errorf("missing required config: %s", key)
@@ -169,8 +181,8 @@ func init() {
 	viper.SetDefault("jira.url", "https://ltvco.atlassian.net")
 
 	// Update default time settings with flags
-	standupCmd.Flags().String("from-time", time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour).Format(time.RFC3339), "Start time for the report (RFC3339 format)")
-	standupCmd.Flags().String("to-time", time.Now().Truncate(24 * time.Hour).Format(time.RFC3339), "End time for the report (RFC3339 format)")
+	standupCmd.Flags().String("from-time", time.Now().AddDate(0, 0, -1).Truncate(24*time.Hour).Format(time.RFC3339), "Start time for the report (RFC3339 format)")
+	standupCmd.Flags().String("to-time", time.Now().Truncate(24*time.Hour).Format(time.RFC3339), "End time for the report (RFC3339 format)")
 
 	// Add flags that can override config file settings
 	standupCmd.Flags().String("jira-username", "", "Jira username (email)")
@@ -178,7 +190,6 @@ func init() {
 	standupCmd.Flags().String("jira-url", "", "Jira instance URL")
 	standupCmd.Flags().String("jira-project", "", "Jira project ID")
 	standupCmd.Flags().String("worklog-path", "", "Path to the worklog file")
-
 
 	standupCmd.Flags().String("llm-anthropic-apikey", "", "Anthropic API Key")
 
@@ -192,7 +203,7 @@ func init() {
 	viper.BindPFlag("jira.url", standupCmd.Flags().Lookup("jira-url"))
 	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
 	viper.BindPFlag("worklog.path", standupCmd.Flags().Lookup("worklog-path"))
-  viper.BindPFlag("llm.anthropic.apikey", standupCmd.Flags().Lookup("llm-anthropic-apikey"))
+	viper.BindPFlag("llm.anthropic.apikey", standupCmd.Flags().Lookup("llm-anthropic-apikey"))
 
 	// Bind GitHub flags
 	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
@@ -213,4 +224,8 @@ func init() {
 	viper.BindEnv("github.repositories", "GITHUB_REPOS") // Comma-separated list in env var
 	viper.BindEnv("github.username", "GITHUB_USERNAME")
 	viper.BindEnv("worklog.path", "WORKLOG_PATH")
+
+	// Add the no-progress flag
+	standupCmd.Flags().Bool("no-progress", false, "Disable progress bar")
+	viper.BindPFlag("no-progress", standupCmd.Flags().Lookup("no-progress"))
 }
