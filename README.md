@@ -1,4 +1,4 @@
-# Bakuri
+# Daiv
 
 Bakuri is a command-line tool designed to streamline developer workflows and enhance team communication. It provides various utilities to help developers be more productive in their daily tasks.
 
