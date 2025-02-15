@@ -4,31 +4,21 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "daiv",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Short: "Daiv is a CLI tool to streamline developer workflows",
+	Long: `Daiv is a command-line tool designed to streamline developer workflows 
+and enhance team communication. It provides various utilities to help developers 
+be more productive in their daily tasks.`,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -39,40 +29,70 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	// Global flags
+	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.daiv.yaml)")
+	
+	// Jira flags
+	rootCmd.PersistentFlags().String("jira-username", "", "Jira username (email)")
+	rootCmd.PersistentFlags().String("jira-token", "", "Jira API token")
+	rootCmd.PersistentFlags().String("jira-url", "", "Jira instance URL")
+	rootCmd.PersistentFlags().String("jira-project", "", "Jira project ID")
+	
+	// LLM flags
+	rootCmd.PersistentFlags().String("llm-anthropic-apikey", "", "Anthropic API Key")
+	
+	// GitHub flags
+	rootCmd.PersistentFlags().String("github-organization", "", "GitHub organization name")
+	rootCmd.PersistentFlags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
+	
+	// Worklog flags
+	rootCmd.PersistentFlags().String("worklog-path", "", "Path to the worklog file")
+	
+	// Bind flags to viper
+	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	viper.BindPFlag("jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
+	viper.BindPFlag("jira.token", rootCmd.PersistentFlags().Lookup("jira-token"))
+	viper.BindPFlag("jira.url", rootCmd.PersistentFlags().Lookup("jira-url"))
+	viper.BindPFlag("jira.project", rootCmd.PersistentFlags().Lookup("jira-project"))
+	viper.BindPFlag("worklog.path", rootCmd.PersistentFlags().Lookup("worklog-path"))
+	viper.BindPFlag("llm.anthropic.apikey", rootCmd.PersistentFlags().Lookup("llm-anthropic-apikey"))
+	viper.BindPFlag("github.organization", rootCmd.PersistentFlags().Lookup("github-organization"))
+	viper.BindPFlag("github.repositories", rootCmd.PersistentFlags().Lookup("github-repositories"))
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.daiv.yaml)")
+	// Set default values
+	viper.SetDefault("jira.url", "https://ltvco.atlassian.net")
 
-	rootCmd.PersistentFlags().BoolP("prompt", "p", false, "Prints the prompt")
-	viper.BindPFlag("prompt", rootCmd.PersistentFlags().Lookup("prompt"))
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Bind environment variables
+	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")
+	viper.BindEnv("jira.token", "JIRA_API_TOKEN")
+	viper.BindEnv("jira.username", "JIRA_USERNAME")
+	viper.BindEnv("jira.url", "JIRA_URL")
+	viper.BindEnv("jira.project", "JIRA_PROJECT")
+	viper.BindEnv("github.organization", "GITHUB_ORG")
+	viper.BindEnv("github.repositories", "GITHUB_REPOS")
+	viper.BindEnv("github.username", "GITHUB_USERNAME")
+	viper.BindEnv("worklog.path", "WORKLOG_PATH")
 }
 
-// initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
+	if cfgFile := viper.GetString("config"); cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
 		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		// Search config in home directory with name ".daiv" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
+		viper.AddConfigPath(fmt.Sprintf("%s/.config/daiv", home))
 		viper.SetConfigName(".daiv")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.AutomaticEnv()
 
-	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		// fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }

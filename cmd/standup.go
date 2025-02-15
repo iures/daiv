@@ -177,55 +177,15 @@ func validateConfig() error {
 func init() {
 	rootCmd.AddCommand(standupCmd)
 
-	// Set default values
-	viper.SetDefault("jira.url", "https://ltvco.atlassian.net")
-
-	// Update default time settings with flags
+	// Add standup-specific flags
 	standupCmd.Flags().String("from-time", time.Now().AddDate(0, 0, -1).Truncate(24*time.Hour).Format(time.RFC3339), "Start time for the report (RFC3339 format)")
 	standupCmd.Flags().String("to-time", time.Now().Truncate(24*time.Hour).Format(time.RFC3339), "End time for the report (RFC3339 format)")
-
-	// Add flags that can override config file settings
-	standupCmd.Flags().String("jira-username", "", "Jira username (email)")
-	standupCmd.Flags().String("jira-token", "", "Jira API token")
-	standupCmd.Flags().String("jira-url", "", "Jira instance URL")
-	standupCmd.Flags().String("jira-project", "", "Jira project ID")
-	standupCmd.Flags().String("worklog-path", "", "Path to the worklog file")
-
-	standupCmd.Flags().String("llm-anthropic-apikey", "", "Anthropic API Key")
-
-	// Add GitHub-specific flags
-	standupCmd.Flags().String("github-organization", "", "GitHub organization name")
-	standupCmd.Flags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
-
-	// Bind flags to viper
-	viper.BindPFlag("jira.username", standupCmd.Flags().Lookup("jira-username"))
-	viper.BindPFlag("jira.token", standupCmd.Flags().Lookup("jira-token"))
-	viper.BindPFlag("jira.url", standupCmd.Flags().Lookup("jira-url"))
-	viper.BindPFlag("jira.project", standupCmd.Flags().Lookup("jira-project"))
-	viper.BindPFlag("worklog.path", standupCmd.Flags().Lookup("worklog-path"))
-	viper.BindPFlag("llm.anthropic.apikey", standupCmd.Flags().Lookup("llm-anthropic-apikey"))
-
-	// Bind GitHub flags
-	viper.BindPFlag("github.username", standupCmd.Flags().Lookup("github-username"))
-	viper.BindPFlag("github.organization", standupCmd.Flags().Lookup("github-organization"))
-	viper.BindPFlag("github.repositories", standupCmd.Flags().Lookup("github-repositories"))
+	standupCmd.Flags().Bool("no-progress", false, "Disable progress bar")
+	standupCmd.Flags().Bool("prompt", false, "Show the prompt instead of generating the report")
 
 	// Bind time flags to viper
 	viper.BindPFlag("fromTime", standupCmd.Flags().Lookup("from-time"))
 	viper.BindPFlag("toTime", standupCmd.Flags().Lookup("to-time"))
-
-	// Environment variables
-	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")
-	viper.BindEnv("jira.token", "JIRA_API_TOKEN")
-	viper.BindEnv("jira.username", "JIRA_USERNAME")
-	viper.BindEnv("jira.url", "JIRA_URL")
-	viper.BindEnv("jira.project", "JIRA_PROJECT")
-	viper.BindEnv("github.organization", "GITHUB_ORG")
-	viper.BindEnv("github.repositories", "GITHUB_REPOS") // Comma-separated list in env var
-	viper.BindEnv("github.username", "GITHUB_USERNAME")
-	viper.BindEnv("worklog.path", "WORKLOG_PATH")
-
-	// Add the no-progress flag
-	standupCmd.Flags().Bool("no-progress", false, "Disable progress bar")
 	viper.BindPFlag("no-progress", standupCmd.Flags().Lookup("no-progress"))
+	viper.BindPFlag("prompt", standupCmd.Flags().Lookup("prompt"))
 }
