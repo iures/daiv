@@ -5,6 +5,7 @@ Daiv is a command-line tool designed to streamline developer workflows and enhan
 ## Features
 
 - Generate standup reports automatically (`daiv standup`)
+- Generate relevant pull requests report (`daiv relevantPrs`)
 - More features coming soon...
 
 ## Installation
@@ -40,6 +41,15 @@ jira:
 llm:
   anthropic:
     token: "your-anthropic-api-key" # or add ANTHROPIC_API_KEY environment variable
+
+# Relevant PRs Configuration
+relevantPrs:
+  repositories:
+    - owner: yourOrganization
+      repo: yourRepoName
+      keywords:
+        - keyword1
+        - keyword2
 ```
 
 ## Jira
@@ -79,6 +89,23 @@ Flags:
 
 Global Flags:
       --config string   config file (default is $HOME/.daiv.yaml)
+```
+
+### Relevant PRs Report
+
+Generate a report of pull requests that match your configured keywords across specified repositories. This command will:
+- Scan pull requests in the repositories defined under the `relevantPrs` configuration section
+- Filter them based on keywords (e.g., adyen, growthbook, telemetry)
+- Provide a concise report to help you track the PRs relevant to your work
+
+```bash
+daiv relevantPrs [flags]
+```
+
+**Flags:**
+```
+  -h, --help                   help for relevantPrs
+      --config string          config file (default is $HOME/.daiv.yaml)
 ```
 
 ## Troubleshooting Section:
