@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"daiv/internal/llm"
 	"fmt"
 	"log"
 	"strings"
@@ -16,9 +17,10 @@ import (
 
 // RepositoryConfig holds the configuration for each repository.
 type RepositoryConfig struct {
-	Owner    string   `mapstructure:"owner"`
-	Repo     string   `mapstructure:"repo"`
-	Keywords []string `mapstructure:"keywords"`
+	Owner        string   `mapstructure:"owner"`
+	Repo         string   `mapstructure:"repo"`
+	SystemPrompt string   `mapstructure:"system_prompt"`
+	Keywords     []string `mapstructure:"keywords"`
 }
 
 // Config represents our overall configuration for the command.
@@ -93,15 +95,16 @@ func processRepository(ctx context.Context, client *github.Client, repoConfig Re
 	prList, err := listAllPRs(ctx, client, repoConfig.Owner, repoConfig.Repo, &github.PullRequestListOptions{
 		State: "open",
 	})
-
 	if err != nil {
 		log.Printf("Error listing PRs for %s/%s: %v", repoConfig.Owner, repoConfig.Repo, err)
 		return
 	}
 
+	var report strings.Builder
+	hasMatchedLines := false
+
 	for index, pr := range prList {
 		diff, _, err := client.PullRequests.GetRaw(ctx, repoConfig.Owner, repoConfig.Repo, pr.GetNumber(), github.RawOptions{Type: github.Diff})
-
 		if err != nil {
 			log.Printf("Error getting diff for PR #%d: %v", pr.GetNumber(), err)
 			continue
@@ -112,20 +115,44 @@ func processRepository(ctx context.Context, client *github.Client, repoConfig Re
 		matchedLines := findKeywordMatches(diffStr, repoConfig.Keywords)
 
 		if len(matchedLines) > 0 {
-      if index == 0 {
-        fmt.Printf("Repository: %s/%s\n", repoConfig.Owner, repoConfig.Repo)
-      }
+			hasMatchedLines = true
 
-      fmt.Printf("  (PR #%d)[%s]: \n  %s\n", pr.GetNumber(), pr.GetHTMLURL(), pr.GetTitle())
+			if index == 0 {
+				fmt.Fprintf(&report, "Repository: %s/%s\n", repoConfig.Owner, repoConfig.Repo)
+			}
 
-			fmt.Println("    Matched changes:")
+			fmt.Fprintf(&report, "  (PR #%d)[%s]: \n  %s\n", pr.GetNumber(), pr.GetHTMLURL(), pr.GetTitle())
+
+			fmt.Fprintln(&report, "    Matched changes:")
 			for _, mLine := range matchedLines {
-				fmt.Printf("      %s\n", mLine)
+				fmt.Fprintf(&report, "      %s\n", mLine)
 			}
 		}
 	}
 
-	fmt.Println("")
+	fmt.Fprintln(&report, "")
+
+	if !hasMatchedLines {
+		return
+	}
+
+	llmClient, err := llm.NewClient()
+	if err != nil {
+		fmt.Printf("Error creating LLM client: %v", err)
+	}
+
+	var prompt strings.Builder
+
+	fmt.Fprintf(&prompt, "System prompt: %s\n %s", repoConfig.SystemPrompt, report.String())
+
+	completion, err := llmClient.GenerateFromSinglePrompt(prompt.String())
+	if err != nil {
+		fmt.Printf("Error generating completion: %v", err)
+	}
+
+	fmt.Println(prompt.String())
+
+	fmt.Println(completion)
 }
 
 // relevantPrs is the main function for the command, orchestrating configuration reading,
