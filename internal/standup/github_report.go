@@ -1,8 +1,8 @@
 package standup
 
 import (
-	"daiv/internal/utils"
 	"context"
+	"daiv/internal/utils"
 	"fmt"
 	"os"
 	"os/exec"
@@ -66,19 +66,41 @@ func (g *GitHubReport) Render() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error searching PRs for %s/%s: %v", g.org, repo, err)
 		}
+		if len(issues) > 0 {
+			report.WriteString("## Authored Pull Requests:\n")
+			for _, issue := range issues {
+				if !utils.IsDateTimeInThreshold(issue.GetUpdatedAt().Time) {
+					continue
+				}
+				report.WriteString(formatPullRequestFromIssue(issue))
 
-		for _, issue := range issues {
-			if !utils.IsDateTimeInThreshold(issue.GetUpdatedAt().Time) {
-				continue
+				commitsReport, err := g.renderCommits(ctx, repo, issue.GetNumber())
+				if err != nil {
+					return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+				}
+				report.WriteString(commitsReport)
 			}
+		}
 
-			report.WriteString(formatPullRequestFromIssue(issue))
-
-			commitsReport, err := g.renderCommits(ctx, repo, issue.GetNumber())
-			if err != nil {
-				return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+		issuesReviewed, err := g.searchReviewedPullRequests(ctx, repo)
+		if err != nil {
+			return "", fmt.Errorf("error searching reviewed PRs for %s/%s: %v", g.org, repo, err)
+		}
+		if len(issuesReviewed) > 0 {
+			report.WriteString("## Reviewed Pull Requests:\n")
+			for _, issue := range issuesReviewed {
+				if !utils.IsDateTimeInThreshold(issue.GetUpdatedAt().Time) {
+					continue
+				}
+				reviewReport, err := g.renderReviews(ctx, repo, issue.GetNumber())
+				if err != nil {
+					return "", fmt.Errorf("error fetching reviews for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+				}
+				if reviewReport != "" {
+					report.WriteString(formatPullRequestFromIssue(issue))
+					report.WriteString(reviewReport)
+				}
 			}
-			report.WriteString(commitsReport)
 		}
 	}
 
@@ -98,6 +120,36 @@ func (g *GitHubReport) searchPullRequests(ctx context.Context, repo string) ([]*
 
 	query := fmt.Sprintf(
 		"is:pr author:%s repo:%s/%s base:%s updated:>=%s updated:<=%s",
+		g.username,
+		g.org,
+		repo,
+		"master",
+		fromTime.Format("2006-01-02"),
+		toTime.Format("2006-01-02"),
+	)
+	searchOptions := &github.SearchOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	result, _, err := g.client.Search.Issues(ctx, query, searchOptions)
+	if err != nil {
+		return nil, err
+	}
+	return result.Issues, nil
+}
+
+func (g *GitHubReport) searchReviewedPullRequests(ctx context.Context, repo string) ([]*github.Issue, error) {
+	fromTime, err := time.Parse(time.RFC3339, viper.GetString("fromTime"))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing fromTime: %v", err)
+	}
+
+	toTime, err := time.Parse(time.RFC3339, viper.GetString("toTime"))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing toTime: %v", err)
+	}
+
+	query := fmt.Sprintf(
+		"is:pr reviewed-by:%s repo:%s/%s base:%s updated:>=%s updated:<=%s",
 		g.username,
 		g.org,
 		repo,
@@ -159,4 +211,39 @@ func formatCommit(commit *github.RepositoryCommit) string {
 		commit.GetCommit().GetCommitter().GetDate().Format("2006-01-02 15:04:05"),
 		commit.GetCommit().GetMessage(),
 	)
+}
+
+func (g *GitHubReport) renderReviews(ctx context.Context, repo string, prNumber int) (string, error) {
+	reviews, _, err := g.client.PullRequests.ListReviews(ctx, g.org, repo, prNumber, nil)
+	if err != nil {
+		return "", err
+	}
+
+	var reviewReport strings.Builder
+	var userReviewCount int
+	for _, review := range reviews {
+		if review.User != nil && review.User.GetLogin() == g.username {
+			if review.GetSubmittedAt().IsZero() || !utils.IsDateTimeInThreshold(review.GetSubmittedAt().Time) {
+				continue
+			}
+			reviewReport.WriteString(formatReview(review))
+			userReviewCount++
+		}
+	}
+
+	if userReviewCount > 0 {
+		return "## Reviews:\n" + reviewReport.String(), nil
+	}
+	return "", nil
+}
+
+func formatReview(review *github.PullRequestReview) string {
+	report := fmt.Sprintf("- Review ID: %d, State: %s, Submitted: %s\n",
+		review.GetID(),
+		review.GetState(),
+		review.GetSubmittedAt().Format("2006-01-02 15:04:05"))
+	if body := review.GetBody(); body != "" {
+		report += fmt.Sprintf("  Comment:\n```\n%s\n```\n", body)
+	}
+	return report
 }
