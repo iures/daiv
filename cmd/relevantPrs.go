@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -93,35 +90,41 @@ func findKeywordMatches(diffStr string, keywords []string) []string {
 
 // processRepository handles querying a single repository and outputting the matching PR changes.
 func processRepository(ctx context.Context, client *github.Client, repoConfig RepositoryConfig) {
-	// Print the repository header.
-	fmt.Printf("Repository: %s/%s\n", repoConfig.Owner, repoConfig.Repo)
-
 	prList, err := listAllPRs(ctx, client, repoConfig.Owner, repoConfig.Repo, &github.PullRequestListOptions{
 		State: "open",
 	})
+
 	if err != nil {
 		log.Printf("Error listing PRs for %s/%s: %v", repoConfig.Owner, repoConfig.Repo, err)
 		return
 	}
 
-	for _, pr := range prList {
-		fmt.Printf("  PR #%d: %s\n", pr.GetNumber(), pr.GetTitle())
+	for index, pr := range prList {
 		diff, _, err := client.PullRequests.GetRaw(ctx, repoConfig.Owner, repoConfig.Repo, pr.GetNumber(), github.RawOptions{Type: github.Diff})
+
 		if err != nil {
 			log.Printf("Error getting diff for PR #%d: %v", pr.GetNumber(), err)
 			continue
 		}
+
 		diffStr := string(diff)
+
 		matchedLines := findKeywordMatches(diffStr, repoConfig.Keywords)
+
 		if len(matchedLines) > 0 {
+      if index == 0 {
+        fmt.Printf("Repository: %s/%s\n", repoConfig.Owner, repoConfig.Repo)
+      }
+
+      fmt.Printf("  (PR #%d)[%s]: \n  %s\n", pr.GetNumber(), pr.GetHTMLURL(), pr.GetTitle())
+
 			fmt.Println("    Matched changes:")
 			for _, mLine := range matchedLines {
 				fmt.Printf("      %s\n", mLine)
 			}
-		} else {
-			fmt.Println("    No relevant changes found.")
 		}
 	}
+
 	fmt.Println("")
 }
 
