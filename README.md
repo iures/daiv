@@ -18,7 +18,7 @@ go install github.com/iures/daiv
 
 ## Configuration
 
-Bakuri requires some configuration to access your work tools. Create a config file at:
+Daiv requires some configuration to access your work tools. Create a config file at:
 
 `~/.config/daiv/config.yaml` or `~/.daiv.yaml`
 
