@@ -10,11 +10,6 @@ Daiv is a command-line tool designed to streamline developer workflows and enhan
 
 ## Installation
 
-### Using Homebrew
-
-```bash
-brew install daiv
-
 ### Using Go
 
 ```bash
