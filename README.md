@@ -28,14 +28,21 @@ Daiv requires some configuration to access your work tools. Create a config file
 # Jira Configuration
 jira:
   url: "https://your-company.atlassian.net"
-  email: "your.email@company.com"
+  username: "your.email@company.com"
   token: "your-jira-api-token" # or add JIRA_API_TOKEN environment variable
   project: "PROJECT_KEY"  # Your Jira project key
+
+# GitHub Configuration
+github:
+  username: "github-username" # or add GITHUB_USERNAME environment variable
+  organization: "github-organization" # or add GITHUB_ORG environment variable
+  repositories: # or add GITHUB_REPOS environment variable
+    - "repository"
 
 # LLM Configuration (Anthropic)
 llm:
   anthropic:
-    token: "your-anthropic-api-key" # or add ANTHROPIC_API_KEY environment variable
+    apiKey: "your-anthropic-api-key" # or add ANTHROPIC_API_KEY environment variable
 
 # Relevant PRs Configuration
 relevantPrs:
@@ -45,6 +52,12 @@ relevantPrs:
       keywords:
         - keyword1
         - keyword2
+```
+### Export your Go bin directory
+You can run `daiv` from any directory after installing it but make sure the Go bin directory is included in your exported `$PATH`
+
+```bash
+export PATH=$(go env GOPATH)/bin:$PATH
 ```
 
 ## Jira
