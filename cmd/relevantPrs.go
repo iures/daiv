@@ -11,6 +11,7 @@ import (
 	internalGithub "daiv/internal/github"
 
 	"github.com/google/go-github/v68/github"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -150,8 +151,6 @@ func processRepository(ctx context.Context, client *github.Client, repoConfig Re
 		fmt.Printf("Error generating completion: %v", err)
 	}
 
-	fmt.Println(prompt.String())
-
 	fmt.Println(completion)
 }
 
@@ -190,7 +189,19 @@ var relevantPrsCmd = &cobra.Command{
 and displays changes containing user-defined keywords. This helps in quickly
 identifying the relevant code changes among many open PRs.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var bar *progressbar.ProgressBar
+		if !viper.GetBool("no-progress") {
+			bar = progressbar.Default(
+				-1,
+				"Dest",
+			)
+		}
+
 		relevantPrs()
+
+		if bar != nil {
+			bar.Clear()
+		}
 	},
 }
 
