@@ -4,12 +4,11 @@ import (
 	"daiv/internal/llm"
 	"daiv/internal/standup"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/schollz/progressbar/v3"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -25,93 +24,46 @@ var standupCmd = &cobra.Command{
 		  - Gathers GitHub activity from watched repositories
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := validateConfig(); err != nil {
-			slog.Error(err.Error())
-			os.Exit(1)
-		}
-
-		var bar *progressbar.ProgressBar
-		if !viper.GetBool("no-progress") {
-			bar = progressbar.Default(
-				-1,
-				"Generating Jira report",
-			)
-		}
-
-		jiraReport := standup.NewJiraReport()
-		jiraContent, err := jiraReport.Render()
-		if err != nil {
-			fmt.Printf("Error generating Jira report: %v\n", err)
-			os.Exit(1)
-		}
-
-		if bar != nil {
-			bar.Describe("Generating GitHub report")
-		}
-
-		githubReport := standup.NewGitHubReport()
-		githubContent, err := githubReport.Render()
-		if err != nil {
-			fmt.Printf("Error generating GitHub report: %v\n", err)
-			os.Exit(1)
-		}
-
-		if bar != nil {
-			bar.Describe("Generating filesystem report")
-		}
-
-		worklogReport := standup.NewWorklogReport()
-		worklogContent, err := worklogReport.Render()
-		if err != nil {
-			fmt.Printf("Error generating worklog report: %v\n", err)
-			os.Exit(1)
-		}
+		// if err := validateConfig(); err != nil {
+		// 	slog.Error(err.Error())
+		// 	os.Exit(1)
+		// }
 
 		prompt := fmt.Sprintf(`
-Generate a standup report for the current day based on. 
-Just respond with the report and nothing else.
-Make sure to include the correct Jira ticket number if available. (e.g. [PBR-1234])
-It should follow the following format:
-## Yesterday:
-- xxx
-- yyy
+			Generate a standup report for the current day based on. 
+			Just respond with the report and nothing else.
+			Make sure to include the correct Jira ticket number if available. (e.g. [PBR-1234])
+			It should follow the following format:
+			## Yesterday:
+			- xxx
+			- yyy
 
-## Today:
-- xxx
-- yyy
+			## Today:
+			- xxx
+			- yyy
 
-No blockers or Blocked by ...
+			No blockers or Blocked by ...
 
-Context:
+			Context:
 
-# Jira Activity:
+			# Jira Activity:
 
-%s
+			%s
+
+			# GitHub Activity:
+
+			%s
 
 
-# GitHub Activity:
+			# Manual Work Log:
 
-%s
-
-
-# Manual Work Log:
-
-%s
-
-			`,
-			jiraContent,
-			githubContent,
-			worklogContent,
+			%s `,
+			projectManagementContent(),
+			githubContent(),
+			worklogContent(),
 		)
 
-		if bar != nil {
-			bar.Describe("Generating final report")
-		}
-
 		if viper.GetBool("prompt") {
-			if bar != nil {
-				bar.Clear()
-			}
 			fmt.Println(prompt)
 		} else {
 			llmClient, err := llm.NewClient()
@@ -126,12 +78,64 @@ Context:
 				os.Exit(1)
 			}
 
-			if bar != nil {
-				bar.Clear()
-			}
 			fmt.Println(finalReport)
 		}
 	},
+}
+
+func githubContent() string {
+	var content string
+	var err error
+
+	githubReport := standup.NewGitHubReport()
+	action := func() {
+		content, err = githubReport.Render()
+	}
+
+	if err != nil {
+		fmt.Printf("Error generating GitHub report: %v\n", err)
+		os.Exit(1)
+	}
+
+	spinner.New().Title("Generating GitHub report...").Action(action).Run()
+
+	return content
+}
+
+func projectManagementContent() string {
+	jiraReport := standup.NewJiraReport()
+	if jiraReport == nil {
+		return ""
+	}
+
+	content := ""
+
+	action := func() {
+		content, _ = jiraReport.Render()
+	}
+
+	spinner.New().Title("Generating Jira report...").Action(action).Run()
+
+	return content
+}
+
+func worklogContent() string {
+	var content string
+	var err error
+
+	worklogReport := standup.NewWorklogReport()
+	action := func() {
+		content, err = worklogReport.Render()
+	}
+
+	if err != nil {
+		fmt.Printf("Error generating worklog report: %v\n", err)
+		os.Exit(1)
+	}	
+
+	spinner.New().Title("Generating worklog report...").Action(action).Run()
+
+	return content
 }
 
 func validateConfig() error {
