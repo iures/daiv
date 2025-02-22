@@ -4,6 +4,7 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
+	"daiv/internal/github"
 	"daiv/internal/jira"
 	"errors"
 	"fmt"
@@ -88,6 +89,11 @@ func initConfig() {
 
 	if err := jira.InitializeJira(); err != nil {
 		fmt.Println("Error initializing Jira:", err)
+		os.Exit(1)
+	}
+
+	if err := github.InitializeGithub(); err != nil {
+		fmt.Println("Error initializing GitHub:", err)
 		os.Exit(1)
 	}
 }

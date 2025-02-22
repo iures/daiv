@@ -6,19 +6,21 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v68/github"
-	"github.com/spf13/viper"
 )
 
 func NewGithubClient() (*github.Client, error) {
-	username := viper.GetString("github.username")
-	token, err := getGhCliToken()
+	config, err := GetGithubConfig()
+	if err != nil {
+		return nil, err
+	}
 
+	token, err := getGhCliToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gh cli token: %w", err)
 	}
 
 	authToken := github.BasicAuthTransport{
-		Username: username,
+		Username: config.Username,
 		Password: token,
 	}
 

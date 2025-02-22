@@ -1,4 +1,4 @@
-package jira
+package github
 
 import (
 	"os"
@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitializeJira() error {
-	config, err := GetJiraConfig()
+func InitializeGithub() error {
+	config, err := GetGithubConfig()
 	if err != nil {
 		return err
 	}
@@ -64,4 +64,4 @@ func getCacheDir() (string, error) {
 		return "", err
 	}
 	return daivDir, nil
-}
+} 
