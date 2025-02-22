@@ -29,6 +29,51 @@ var standupCmd = &cobra.Command{
 		// 	os.Exit(1)
 		// }
 
+		// Create channels for each content type and errors
+		githubChan := make(chan string)
+		jiraChan := make(chan string)
+		worklogChan := make(chan string)
+		errChan := make(chan error, 3) // Buffer for potential errors
+
+		// Launch goroutines for each content type
+		go func() {
+			content, err := getGithubContent()
+			if err != nil {
+				errChan <- fmt.Errorf("github error: %v", err)
+				githubChan <- ""
+				return
+			}
+			githubChan <- content
+		}()
+
+		go func() {
+			content := getProjectManagementContent()
+			jiraChan <- content
+		}()
+
+		go func() {
+			content, err := getWorklogContent()
+			if err != nil {
+				errChan <- fmt.Errorf("worklog error: %v", err)
+				worklogChan <- ""
+				return
+			}
+			worklogChan <- content
+		}()
+
+		// Collect results
+		githubContent := <-githubChan
+		jiraContent := <-jiraChan
+		worklogContent := <-worklogChan
+
+		// Check for errors
+		select {
+		case err := <-errChan:
+			fmt.Printf("Error generating report: %v\n", err)
+			os.Exit(1)
+		default:
+		}
+
 		prompt := fmt.Sprintf(`
 			Generate a standup report for the current day based on. 
 			Just respond with the report and nothing else.
@@ -54,13 +99,12 @@ var standupCmd = &cobra.Command{
 
 			%s
 
-
 			# Manual Work Log:
 
 			%s `,
-			projectManagementContent(),
-			githubContent(),
-			worklogContent(),
+			jiraContent,
+			githubContent,
+			worklogContent,
 		)
 
 		if viper.GetBool("prompt") {
@@ -83,7 +127,8 @@ var standupCmd = &cobra.Command{
 	},
 }
 
-func githubContent() string {
+// Helper functions that work with the spinner
+func getGithubContent() (string, error) {
 	var content string
 	var err error
 
@@ -92,34 +137,26 @@ func githubContent() string {
 		content, err = githubReport.Render()
 	}
 
-	if err != nil {
-		fmt.Printf("Error generating GitHub report: %v\n", err)
-		os.Exit(1)
-	}
-
 	spinner.New().Title("Generating GitHub report...").Action(action).Run()
-
-	return content
+	return content, err
 }
 
-func projectManagementContent() string {
+func getProjectManagementContent() string {
 	jiraReport := standup.NewJiraReport()
 	if jiraReport == nil {
 		return ""
 	}
 
 	content := ""
-
 	action := func() {
 		content, _ = jiraReport.Render()
 	}
 
 	spinner.New().Title("Generating Jira report...").Action(action).Run()
-
 	return content
 }
 
-func worklogContent() string {
+func getWorklogContent() (string, error) {
 	var content string
 	var err error
 
@@ -128,14 +165,8 @@ func worklogContent() string {
 		content, err = worklogReport.Render()
 	}
 
-	if err != nil {
-		fmt.Printf("Error generating worklog report: %v\n", err)
-		os.Exit(1)
-	}	
-
 	spinner.New().Title("Generating worklog report...").Action(action).Run()
-
-	return content
+	return content, err
 }
 
 func validateConfig() error {
