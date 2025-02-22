@@ -4,8 +4,12 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
+	"daiv/internal/jira"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -75,21 +79,78 @@ func init() {
 }
 
 func initConfig() {
+	viper.AutomaticEnv()
+
+	if err := loadConfigs(); err != nil {
+		fmt.Println("Error loading configs:", err)
+		os.Exit(1)
+	}
+
+	if err := jira.InitializeJira(); err != nil {
+		fmt.Println("Error initializing Jira:", err)
+		os.Exit(1)
+	}
+}
+
+func loadConfigs() error {
 	if cfgFile := viper.GetString("config"); cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 
-		// Search config in home directory with name ".daiv" (without extension).
+		viper.AddConfigPath(filepath.Join(home, ".config", "daiv"))
 		viper.AddConfigPath(home)
-		viper.AddConfigPath(fmt.Sprintf("%s/.config/daiv", home))
 		viper.SetConfigName(".daiv")
+		viper.SetConfigType("yaml")
+
+		if err := viper.ReadInConfig(); err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return fmt.Errorf("error reading config: %w", err)
+			} 
+		} else {
+				fmt.Println("Config file read: ", viper.ConfigFileUsed())
+			}
+
+		if err := readCacheConfig(); err != nil {
+			return err
+		}
 	}
 
-	viper.AutomaticEnv()
-  viper.ReadInConfig()
+	return nil
+}
+
+func readCacheConfig() error {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return err
+	}
+
+	daivCacheDir := filepath.Join(cacheDir, "daiv")
+	if _, err := os.Stat(daivCacheDir); errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(daivCacheDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	cacheFile := filepath.Join(daivCacheDir, "config.yaml")
+	if _, err := os.Stat(cacheFile); errors.Is(err, fs.ErrNotExist) {
+		if err := os.WriteFile(cacheFile, []byte{}, 0644); err != nil {
+			return err
+		}
+	}
+
+	viper.SetConfigFile(cacheFile)
+
+	if err := viper.MergeInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return fmt.Errorf("error reading cache config: %w", err)
+		} 
+	} else {
+			fmt.Println("Cache config file merged: ", cacheFile)
+		}
+
+	return nil
 }

@@ -18,6 +18,11 @@ type JiraReport struct {
 }
 
 func NewJiraReport() *JiraReport {
+	config, err := jira.GetJiraConfig()
+	if err != nil || !config.IsConfigured() {
+		return nil
+	}
+
 	return &JiraReport{
 		Issues:   []goJira.Issue{},
 		FromTime: time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour),
@@ -31,7 +36,7 @@ func (r *JiraReport) Render() (string, error) {
 	}
 
 	if len(r.Issues) == 0 {
-		return "No issues found", nil
+		return "", nil
 	}
 
 	var report strings.Builder
@@ -40,7 +45,16 @@ func (r *JiraReport) Render() (string, error) {
 }
 
 func (r *JiraReport) fetchIssues() error {
-	config := jira.GetJiraConfig()
+	config, err := jira.GetJiraConfig()
+	if err != nil {
+		return err
+	}
+
+	// Skip if Jira is not configured
+	if !config.IsConfigured() {
+		return nil
+	}
+
 	client, err := jira.NewJiraClient()
 	if err != nil {
 		return err
