@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
+	// "sync"
 
-	internalGithub "daiv/internal/github"
+	// internalGithub "daiv/internal/github"
 
 	"github.com/google/go-github/v68/github"
 	"github.com/schollz/progressbar/v3"
@@ -157,28 +157,30 @@ func processRepository(ctx context.Context, client *github.Client, repoConfig Re
 // relevantPrs is the main function for the command, orchestrating configuration reading,
 // GitHub client creation, and concurrent processing of the repositories.
 func relevantPrs() {
-	cfg, err := getConfig()
-	if err != nil {
-		log.Fatalf("Configuration error: %v", err)
-	}
-
-	ctx := context.Background()
-	client, err := internalGithub.NewGithubClient()
-	if err != nil {
-		log.Fatalf("Error creating github client: %v", err)
-	}
-
-	var wg sync.WaitGroup
-	for _, repoConfig := range cfg.Repositories {
-		wg.Add(1)
-		// Capture the variable to avoid race conditions.
-		repoCfg := repoConfig
-		go func() {
-			defer wg.Done()
-			processRepository(ctx, client, repoCfg)
-		}()
-	}
-	wg.Wait()
+  // FIXME: This function is currently disabled, re-enable it before merging
+  //
+	// cfg, err := getConfig()
+	// if err != nil {
+	// 	log.Fatalf("Configuration error: %v", err)
+	// }
+	//
+	// ctx := context.Background()
+	// client, err := internalGithub.NewGithubClient()
+	// if err != nil {
+	// 	log.Fatalf("Error creating github client: %v", err)
+	// }
+	//
+	// var wg sync.WaitGroup
+	// for _, repoConfig := range cfg.Repositories {
+	// 	wg.Add(1)
+	// 	// Capture the variable to avoid race conditions.
+	// 	repoCfg := repoConfig
+	// 	go func() {
+	// 		defer wg.Done()
+	// 		processRepository(ctx, client, repoCfg)
+	// 	}()
+	// }
+	// wg.Wait()
 }
 
 // relevantPrsCmd represents the updated relevantPrs command with improved descriptions.

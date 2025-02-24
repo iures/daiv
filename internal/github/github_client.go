@@ -1,6 +1,8 @@
 package github
 
 import (
+	"context"
+	"daiv/internal/plugin"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -8,7 +10,7 @@ import (
 	"github.com/google/go-github/v68/github"
 )
 
-func NewGithubClient() (*github.Client, error) {
+func NewGithubClient() (*GithubClient, error) {
 	config, err := GetGithubConfig()
 	if err != nil {
 		return nil, err
@@ -26,7 +28,12 @@ func NewGithubClient() (*github.Client, error) {
 
 	client := github.NewClient(authToken.Client())
 
-	return client, nil
+	githubClient := &GithubClient{
+		client: client,
+		config: config,
+	}
+
+	return githubClient, nil
 }
 
 func getGhCliToken() (string, error) {
@@ -39,4 +46,13 @@ func getGhCliToken() (string, error) {
 		return "", fmt.Errorf("failed to execute gh cli: %v", err)
 	}
 	return strings.TrimSpace(string(output)), nil
+}
+type GithubClient struct {
+	client *github.Client
+	config *GithubConfig
+}
+
+func (gc *GithubClient) GetActivityReport(ctx context.Context, timeRange plugin.TimeRange) (string, error) {
+	githubReport := NewGitHubReport()
+	return githubReport.Render()
 }
