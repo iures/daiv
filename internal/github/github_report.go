@@ -1,11 +1,10 @@
-package standup
+package github
 
 import (
 	"context"
 	"daiv/internal/utils"
 	"fmt"
 	"os"
-	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -43,73 +42,112 @@ func NewGitHubReport() *GitHubReport {
 	}
 }
 
-func getGhCliToken() (string, error) {
-	cmd := exec.Command("gh", "auth", "token")
-	output, err := cmd.Output()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return "", fmt.Errorf("gh cli error: %s", string(exitErr.Stderr))
-		}
-		return "", fmt.Errorf("failed to execute gh cli: %v", err)
-	}
-	return strings.TrimSpace(string(output)), nil
-}
-
 func (g *GitHubReport) Render() (string, error) {
 	ctx := context.Background()
 	var report strings.Builder
 
 	for _, repo := range g.repos {
-		report.WriteString(fmt.Sprintf("\n\n# Repository: %s\n", repo))
+		repoHasContent := false
+		repoSection := &strings.Builder{}
+		repoSection.WriteString(fmt.Sprintf("\n# Repository: %s\n", repo))
 
-		issues, err := g.searchPullRequests(ctx, repo)
+		authoredPullRequestCommits, err := g.renderAuthoredPullRequestCommits(ctx, repo)
 		if err != nil {
-			return "", fmt.Errorf("error searching PRs for %s/%s: %v", g.org, repo, err)
+			return "", fmt.Errorf("error rendering authored pull request commits for %s/%s: %v", g.org, repo, err)
 		}
-		if len(issues) > 0 {
-			report.WriteString("## Authored Pull Requests:\n")
-			for _, issue := range issues {
-				if !utils.IsDateTimeInThreshold(issue.GetUpdatedAt().Time) {
-					continue
-				}
-				report.WriteString(formatPullRequestFromIssue(issue))
+		repoSection.WriteString(authoredPullRequestCommits)
 
-				commitsReport, err := g.renderCommits(ctx, repo, issue.GetNumber())
-				if err != nil {
-					return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
-				}
-				report.WriteString(commitsReport)
-			}
+		reviewedPullRequestCommits, err := g.renderReviewedPullRequestCommits(ctx, repo)
+		if err != nil {
+			return "", fmt.Errorf("error rendering reviewed pull request commits for %s/%s: %v", g.org, repo, err)
 		}
+		repoSection.WriteString(reviewedPullRequestCommits)
 
 		issuesReviewed, err := g.searchReviewedPullRequests(ctx, repo)
 		if err != nil {
 			return "", fmt.Errorf("error searching reviewed PRs for %s/%s: %v", g.org, repo, err)
 		}
 
-    // fmt.Println("issuesReviewed", issuesReviewed)
 		if len(issuesReviewed) > 0 {
-			report.WriteString("## Reviewed Pull Requests:\n")
+			repoHasContent = true
+			repoSection.WriteString("## Reviewed Pull Requests:\n")
+			
+			var hasReviewsInPeriod bool
 			for _, issue := range issuesReviewed {
-				// if !utils.IsDateTimeInThreshold(issue.GetUpdatedAt().Time) {
-				// 	continue
-				// }
 				reviewReport, err := g.renderReviews(ctx, repo, issue)
 				if err != nil {
 					return "", fmt.Errorf("error fetching reviews for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
 				}
 				if reviewReport != "" {
-					report.WriteString(formatPullRequestFromIssue(issue))
-					report.WriteString(reviewReport)
-				}
+					hasReviewsInPeriod = true
+					repoSection.WriteString(formatPullRequestFromIssue(issue))
+					repoSection.WriteString(reviewReport)
 
-        reviewCommentReport, err := g.renderPrComments(ctx, repo, issue.GetNumber())
-        if err != nil {
-          return "", fmt.Errorf("error fetching comments for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
-        }
-        report.WriteString(reviewCommentReport)
+					reviewCommentReport, err := g.renderPrComments(ctx, repo, issue.GetNumber())
+					if err != nil {
+						return "", fmt.Errorf("error fetching comments for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+					}
+					repoSection.WriteString(reviewCommentReport)
+				}
+			}
+
+			if !hasReviewsInPeriod {
+				repoSection.WriteString("No reviews found in the specified time period.\n")
 			}
 		}
+
+		if repoHasContent {
+			report.WriteString(repoSection.String())
+		}
+	}
+
+	if report.Len() == 0 {
+		report.WriteString("\nNo GitHub activity found in the specified time period.\n")
+	}
+
+	return report.String(), nil
+}
+
+func (g *GitHubReport) renderAuthoredPullRequestCommits(ctx context.Context, repo string) (string, error) {
+	issues, err := g.searchPullRequests(ctx, repo)
+	if err != nil {
+		return "", err
+	}
+
+	var report strings.Builder
+
+	if len(issues) > 0 {
+		report.WriteString("## Authored Pull Requests:\n")
+		for _, issue := range issues {
+			report.WriteString(formatPullRequestFromIssue(issue))
+
+			commitsReport, err := g.renderCommits(ctx, repo, issue.GetNumber())
+			if err != nil {
+				return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+			}
+			report.WriteString(commitsReport)
+		}
+	}
+
+	return report.String(), nil
+}
+
+func (g *GitHubReport) renderReviewedPullRequestCommits(ctx context.Context, repo string) (string, error) {
+	issues, err := g.searchPullRequests(ctx, repo)
+	if err != nil {
+		return "", err
+	}
+
+	var report strings.Builder
+
+	for _, issue := range issues {
+		report.WriteString(formatPullRequestFromIssue(issue))
+
+		commitsReport, err := g.renderCommits(ctx, repo, issue.GetNumber())
+		if err != nil {
+			return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), g.org, repo, err)
+		}
+		report.WriteString(commitsReport)
 	}
 
 	return report.String(), nil
@@ -166,15 +204,14 @@ func (g *GitHubReport) searchReviewedPullRequests(ctx context.Context, repo stri
 		toTime.Format("2006-01-02"),
 	)
 	searchOptions := &github.SearchOptions{
-    Sort: "updated",
-    Order: "desc",
+		Sort: "updated",
+		Order: "desc",
 		ListOptions: github.ListOptions{PerPage: 100},
 	}
 	result, _, err := g.client.Search.Issues(ctx, query, searchOptions)
 	if err != nil {
 		return nil, err
 	}
-
 
 	return result.Issues, nil
 }
@@ -264,34 +301,32 @@ func formatComment(comment *github.PullRequestComment) string {
 }
 
 func (g *GitHubReport) renderReviews(ctx context.Context, repo string, issue *github.Issue) (string, error) {
-	reviews, _, err := g.client.PullRequests.ListReviews(ctx, g.org, repo, issue.GetNumber() , nil)
+	reviews, _, err := g.client.PullRequests.ListReviews(ctx, g.org, repo, issue.GetNumber(), nil)
 	if err != nil {
 		return "", err
 	}
 
 	var reviewReport strings.Builder
-	var userReviewCount int
 	for _, review := range reviews {
 		if review.User != nil && review.User.GetLogin() == g.username {
-			if review.GetSubmittedAt().IsZero() || !utils.IsDateTimeInThreshold(review.GetSubmittedAt().Time) || review.User.GetLogin() != g.username {
+			if review.GetSubmittedAt().IsZero() || !utils.IsDateTimeInThreshold(review.GetSubmittedAt().Time) {
 				continue
 			}
 			reviewReport.WriteString(formatReview(review, issue))
-			userReviewCount++
 		}
 	}
 
-	if userReviewCount > 0 {
-		return "## Reviews:\n" + reviewReport.String(), nil
+	if reviewReport.Len() > 0 {
+		return "### Reviews:\n" + reviewReport.String(), nil
 	}
 	return "", nil
 }
 
 func formatReview(review *github.PullRequestReview, issue *github.Issue) string {
-  report := fmt.Sprintf("- PR: %d - %s\nAuthor: %s, State: %s, Submitted: %s\n",
-    issue.GetNumber(),
-    issue.GetTitle(),
-    *review.GetUser().Login,
+	report := fmt.Sprintf("- PR: %d - %s\nAuthor: %s, State: %s, Submitted: %s\n",
+		issue.GetNumber(),
+		issue.GetTitle(),
+		*review.GetUser().Login,
 		review.GetState(),
 		review.GetSubmittedAt().Format("2006-01-02 15:04:05"))
 
