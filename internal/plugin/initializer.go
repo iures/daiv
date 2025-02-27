@@ -71,13 +71,22 @@ func promptConfigKeys(missingConfigKeys []ConfigKey) ([]huh.Field, error) {
 }
 
 func promptConfigKey(key ConfigKey) huh.Field {
-	return huh.NewInput().
+	value := ""
+	input := huh.NewInput().
 		Key(key.Key).
 		Title(key.Name).
-		Value(nil).
-		Validate(func(s string) error {
+		Value(&value)
+	
+	if key.Required {
+		input = input.Validate(func(s string) error {
+			if s == "" {
+				return fmt.Errorf("this field is required")
+			}
 			return nil
 		})
+	}
+	
+	return input
 }
 
 func missingConfigKeys(configKeys []ConfigKey, configParams map[string]interface{}) []ConfigKey {
@@ -101,5 +110,9 @@ func saveConfigChanges(pluginName string, changedConfigKeys map[string]interface
 
 func getConfigParams(pluginName string) map[string]interface{} {
 	configPath := fmt.Sprintf("plugins.%s", pluginName)
-	return viper.Sub(configPath).AllSettings()
+	sub := viper.Sub(configPath)
+	if sub == nil {
+		return make(map[string]interface{})
+	}
+	return sub.AllSettings()
 }

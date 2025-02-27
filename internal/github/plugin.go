@@ -32,8 +32,27 @@ func (g *GitHubPlugin) Name() string {
 	return "github"
 }
 
-func (g *GitHubPlugin) Initialize(config map[string]interface{}) error {
-	// Parse config and initialize client
+func (g *GitHubPlugin) Manifest() *plugin.PluginManifest {
+	return &plugin.PluginManifest{
+		ConfigKeys: []plugin.ConfigKey{
+			{
+				Key:         "github.organization",
+				Name:        "GitHub Organization",
+				Description: "The GitHub organization to monitor",
+				Required:    true,
+			},
+			{
+				Key:         "github.repositories",
+				Name:        "GitHub Repositories",
+				Description: "List of repositories to monitor",
+				Required:    true,
+			},
+		},
+	}
+}
+
+func (g *GitHubPlugin) Initialize() error {
+	// Initialize the plugin with configuration from viper or other sources
 	return nil
 }
 
@@ -43,7 +62,7 @@ func (g *GitHubPlugin) Shutdown() error {
 
 func (g *GitHubPlugin) GenerateReport(ctx context.Context, timeRange plugin.TimeRange) (plugin.Report, error) {
   fmt.Println("GenerateReport")
-	// Your existing GitHub report generation logic here
+
 	content, err := g.client.GetActivityReport(ctx, timeRange)
 	if err != nil {
 		return plugin.Report{}, err
