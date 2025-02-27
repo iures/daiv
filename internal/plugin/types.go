@@ -18,12 +18,25 @@ type Report struct {
 	Metadata   map[string]interface{}
 }
 
+type ConfigKey struct {
+	Key         string
+	Name        string
+	Description string
+	Required    bool
+	Secret      bool
+}
+
+type PluginManifest struct {
+	ConfigKeys []ConfigKey
+}
+
 // Plugin defines the base interface that all plugins must implement
 type Plugin interface {
+	Manifest() *PluginManifest
 	// Name returns the unique identifier for this plugin
 	Name() string
 	// Initialize sets up the plugin with its configuration
-	Initialize(config map[string]interface{}) error
+	Initialize() error
 	// Shutdown performs cleanup when the plugin is being disabled/removed
 	Shutdown() error
 }

@@ -22,7 +22,7 @@ func NewGitHubPlugin() (*GitHubPlugin, error) {
     return nil, err
   }
 
-  return &GitHubPlugin{
+  return &GitHubPlugin {
     client: client,
     config: config,
   }, nil

@@ -36,6 +36,9 @@ func (r *Registry) RegisterReporter(reporter Reporter) error {
 
 	r.reporters[name] = reporter
 	r.plugins[name] = reporter
+
+	Initialize(reporter)
+
 	return nil
 }
 

@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"daiv/internal/github"
-	"daiv/internal/jira"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -87,10 +86,11 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	if err := jira.InitializeJira(); err != nil {
-		fmt.Println("Error initializing Jira:", err)
-		os.Exit(1)
-	}
+
+	// if err := jira.InitializeJira(); err != nil {
+	// 	fmt.Println("Error initializing Jira:", err)
+	// 	os.Exit(1)
+	// }
 
 	if err := github.InitializeGithub(); err != nil {
 		fmt.Println("Error initializing GitHub:", err)
