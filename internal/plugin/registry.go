@@ -56,9 +56,27 @@ func (r *Registry) GetEnabledReporters() []Reporter {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	enabled := make([]Reporter, 0, len(r.reporters))
+	var enabledReporters []Reporter
 	for _, reporter := range r.reporters {
-		enabled = append(enabled, reporter)
+		enabledReporters = append(enabledReporters, reporter)
 	}
-	return enabled
+	return enabledReporters
+}
+
+// ShutdownAll gracefully shuts down all plugins
+func (r *Registry) ShutdownAll() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var errs []error
+	for name, plugin := range r.plugins {
+		if err := plugin.Shutdown(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to shutdown plugin %s: %w", name, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors during shutdown: %v", errs)
+	}
+	return nil
 } 

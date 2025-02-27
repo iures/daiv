@@ -103,18 +103,30 @@ func registerPlugins() {
 	
 	githubPlugin, err := github.NewGitHubPlugin()
   if err != nil {
-		slog.Error("Failed to register GitHub plugin", "error", err)
+		slog.Error("Failed to create GitHub plugin", "error", err)
 		os.Exit(1)
   }
 
 	if err := registry.RegisterReporter(githubPlugin); err != nil {
 		slog.Error("Failed to register GitHub plugin", "error", err)
+		os.Exit(1)
 	}
+	
+	// Register any additional plugins here
+	
+	slog.Info("Successfully registered all plugins")
 }
 
 func runStandup() error {
     ctx := context.Background()
     registry := plugin.GetRegistry()
+    
+    // Make sure to clean up plugin resources when we're done
+    defer func() {
+        if err := registry.ShutdownAll(); err != nil {
+            slog.Error("Error shutting down plugins", "error", err)
+        }
+    }()
     
     now := time.Now()
     timeRange := plugin.TimeRange{
