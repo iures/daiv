@@ -8,28 +8,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-func InitializeJira() error {
-	config, err := GetJiraConfig()
-	if err != nil {
-		return err
-	}
-
-	if !config.IsConfigured() {
-		inputs, err := ConfigPrompt(config)
-		if err != nil {
-			return err
-		}
-
-		if len(inputs) > 0 {
-			if err := saveChanges(inputs); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 func saveChanges(inputs []huh.Field) error {
 	if len(inputs) == 0 {
 		return nil
