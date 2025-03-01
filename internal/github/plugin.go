@@ -39,7 +39,7 @@ func (g *GitHubPlugin) Manifest() *plugin.PluginManifest {
 				Required:    true,
 			},
 			{
-				Type:        plugin.ConfigTypeMultiSelect,
+				Type:        plugin.ConfigTypeMultiline,
 				Key:         "repositories",
 				Name:        "GitHub Repositories",
 				Description: "List of repositories to monitor",
@@ -55,11 +55,24 @@ func (g *GitHubPlugin) Initialize(settings map[string]interface{}) error {
 		return fmt.Errorf("failed to get gh cli token: %w", err)
 	}
 
+	repos := settings["repositories"].([]string)
+	if len(repos) == 0 {
+		repos = []string{}
+	}
+	username, ok := settings["username"].(string)
+	if !ok {
+		return fmt.Errorf("username is required")
+	}
+	org, ok := settings["organization"].(string)
+	if !ok {
+		return fmt.Errorf("organization is required")
+	}
+
 	g.client.Init(GithubClientSettings{
-		Username: settings["username"].(string),
+		Username: username,
 		Token:    token,
-		Org:      settings["organization"].(string),
-		Repos:    settings["repositories"].([]string),
+		Org:      org,
+		Repos:    repos,
 	})
 
 	return nil

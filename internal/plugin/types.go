@@ -15,8 +15,6 @@ const (
 	// ConfigTypeMultiline represents a multiline text input
 	ConfigTypeMultiline
 	// ConfigTypeSelect represents a dropdown selection
-	ConfigTypeSelect
-	// ConfigTypeMultiSelect represents a multi-selection input
 	ConfigTypeMultiSelect
 	// ConfigTypeBoolean represents a boolean toggle
 	ConfigTypeBoolean
@@ -38,11 +36,11 @@ type Report struct {
 type ConfigKey struct {
 	Type        ConfigType
 	Key         string
+	Value       any
 	Name        string
 	Description string
 	Required    bool
 	Secret      bool
-	PluginName  string // Name of the plugin this config belongs to
 }
 
 type PluginManifest struct {

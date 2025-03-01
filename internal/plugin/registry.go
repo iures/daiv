@@ -22,6 +22,19 @@ func GetRegistry() *Registry {
 	return globalRegistry
 }
 
+func (r *Registry) GetStandupPlugins() []StandupPlugin {
+	standupPlugins := []StandupPlugin{}
+
+	for _, plugin := range r.Plugins {
+		standupPlugin, ok := plugin.(StandupPlugin)
+		if ok {
+			standupPlugins = append(standupPlugins, standupPlugin)
+		}
+	}
+
+	return standupPlugins
+}
+
 func (r *Registry) Register(plugin Plugin) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

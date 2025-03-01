@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"daiv/internal/github"
 	"daiv/internal/plugin"
 	"fmt"
 	"log/slog"
@@ -78,7 +77,6 @@ func init() {
 	rootCmd.AddCommand(standupCmd)
 
 	initFlags()
-	registerPlugins()
 }
 
 func initFlags() {
@@ -95,77 +93,61 @@ func initFlags() {
 	viper.BindPFlag("prompt", standupCmd.Flags().Lookup("prompt"))
 }
 
-func registerPlugins() {
-	registry := plugin.GetRegistry()
-
-	githubPlugin := github.NewGitHubPlugin()
-
-	if err := registry.Register(githubPlugin); err != nil {
-		slog.Error("Failed to register GitHub plugin", "error", err)
-		os.Exit(1)
-	}
-
-	slog.Info("Successfully registered all plugins")
-}
-
 func runStandup() error {
-	registry := plugin.GetRegistry()
+    registry := plugin.GetRegistry()
+    
+    // Make sure to clean up plugin resources when we're done
+    defer func() {
+        if err := registry.ShutdownAll(); err != nil {
+            slog.Error("Error shutting down plugins", "error", err)
+        }
+    }()
+    
+    now := time.Now()
+    timeRange := plugin.TimeRange{
+        Start: now.Add(-24 * time.Hour),
+        End:   now,
+    }
 
-	// Make sure to clean up plugin resources when we're done
-	defer func() {
-		if err := registry.ShutdownAll(); err != nil {
-			slog.Error("Error shutting down plugins", "error", err)
-		}
-	}()
+    reporterPlugins := registry.GetStandupPlugins()
+    errChan := make(chan error, len(reporterPlugins))
+    reportChan := make(chan string, len(reporterPlugins)) // Make buffered channel
 
-	now := time.Now()
-	timeRange := plugin.TimeRange{
-		Start: now.Add(-24 * time.Hour),
-		End:   now,
-	}
+    var wg sync.WaitGroup
+    for _, reporter := range reporterPlugins {
+        wg.Add(1)
+        go func(r plugin.StandupPlugin) {
+            defer wg.Done()
+            report, err := r.GetStandupContext(timeRange)
+            if err != nil {
+                errChan <- fmt.Errorf("%s: %w", r.Name(), err)
+                return
+            }
+            reportChan <- report
+        }(reporter)
+    }
 
-	reporterPlugins := registry.Plugins
-	errChan := make(chan error, len(reporterPlugins))
-	reportChan := make(chan string, len(reporterPlugins)) // Make buffered channel
+    // Start a goroutine to close channels after all workers are done
+    go func() {
+        wg.Wait()
+        close(reportChan)
+        close(errChan)
+    }()
 
-	var wg sync.WaitGroup
-	for _, reporter := range reporterPlugins {
-		wg.Add(1)
-		go func(r plugin.Plugin) {
-			defer wg.Done()
-			if standupPlugin, ok := r.(plugin.StandupPlugin); ok {
-				standupContext, err := standupPlugin.GetStandupContext(timeRange)
-				if err != nil {
-					errChan <- fmt.Errorf("%s: %w", r.Name(), err)
+    // Collect reports and errors
+    var reports []string
+    for report := range reportChan {
+        reports = append(reports, report)
+    }
 
-					return
-				}
-				reportChan <- standupContext
-			}
-		}(reporter)
-	}
+    // Check for errors
+    for err := range errChan {
+        if err != nil {
+            return err
+        }
+    }
 
-	// Start a goroutine to close channels after all workers are done
-	go func() {
-		wg.Wait()
-		close(reportChan)
-		close(errChan)
-	}()
-
-	// Collect reports and errors
-	var reports []string
-	for report := range reportChan {
-		reports = append(reports, report)
-	}
-
-	// Check for errors
-	for err := range errChan {
-		if err != nil {
-			return err
-		}
-	}
-
-	return formatAndDisplayReports(reports)
+    return formatAndDisplayReports(reports)
 }
 
 func formatAndDisplayReports(reports []string) error {
