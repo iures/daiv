@@ -18,6 +18,7 @@ type Report struct {
 }
 
 type ConfigKey struct {
+	Type
 	Key         string
 	Name        string
 	Description string

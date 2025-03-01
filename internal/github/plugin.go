@@ -25,12 +25,14 @@ func (g *GitHubPlugin) Manifest() *plugin.PluginManifest {
 	return &plugin.PluginManifest{
 		ConfigKeys: []plugin.ConfigKey{
 			{
+        Type:        ,
 				Key:         "username",
 				Name:        "GitHub Username",
 				Description: "Your GitHub username",
 				Required:    true,
 			},
 			{
+				Type:        ,
 				Key:         "organization",
 				Name:        "GitHub Organization",
 				Description: "The GitHub organization to monitor",
