@@ -4,9 +4,12 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
+	"daiv/internal/github"
+	"daiv/internal/plugin"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -84,6 +87,22 @@ func initConfig() {
 		fmt.Println("Error loading configs:", err)
 		os.Exit(1)
 	}
+
+	registerPlugins()
+}
+
+func registerPlugins() {
+  fmt.Println("RegisterPlugins")
+	registry := plugin.GetRegistry()
+	
+	githubPlugin := github.NewGitHubPlugin()
+
+	if err := registry.Register(githubPlugin); err != nil {
+		slog.Error("Failed to register GitHub plugin", "error", err)
+		os.Exit(1)
+	}
+	
+	slog.Info("Successfully registered all plugins")
 }
 
 func loadConfigs() error {
