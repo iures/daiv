@@ -4,6 +4,24 @@ import (
 	"time"
 )
 
+// ConfigType defines the type of configuration input
+type ConfigType int
+
+const (
+	// ConfigTypeString represents a simple string input
+	ConfigTypeString ConfigType = iota
+	// ConfigTypePassword represents a password input that should be masked
+	ConfigTypePassword
+	// ConfigTypeMultiline represents a multiline text input
+	ConfigTypeMultiline
+	// ConfigTypeSelect represents a dropdown selection
+	ConfigTypeSelect
+	// ConfigTypeMultiSelect represents a multi-selection input
+	ConfigTypeMultiSelect
+	// ConfigTypeBoolean represents a boolean toggle
+	ConfigTypeBoolean
+)
+
 // TimeRange represents a period for report generation
 type TimeRange struct {
 	Start time.Time
@@ -18,7 +36,7 @@ type Report struct {
 }
 
 type ConfigKey struct {
-	Type
+	Type        ConfigType
 	Key         string
 	Name        string
 	Description string
