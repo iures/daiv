@@ -8,14 +8,12 @@ import (
 // Registry manages the registration and access of plugins
 type Registry struct {
 	mu       sync.RWMutex
-	plugins  map[string]Plugin
-	reporters map[string]Reporter
+	Plugins  map[string]Plugin
 }
 
 var (
 	globalRegistry = &Registry{
-		plugins:   make(map[string]Plugin),
-		reporters: make(map[string]Reporter),
+		Plugins: make(map[string]Plugin),
 	}
 )
 
@@ -24,43 +22,31 @@ func GetRegistry() *Registry {
 	return globalRegistry
 }
 
-// RegisterReporter adds a new reporter plugin to the registry
-func (r *Registry) RegisterReporter(reporter Reporter) error {
+func (r *Registry) Register(plugin Plugin) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	name := reporter.Name()
-	if _, exists := r.reporters[name]; exists {
+	name := plugin.Name()
+	if _, exists := r.Plugins[name]; exists {
 		return fmt.Errorf("reporter plugin %s is already registered", name)
 	}
 
-	r.reporters[name] = reporter
-	r.plugins[name] = reporter
+	// Then initialize it
+	if err := Initialize(plugin); err != nil {
+		return fmt.Errorf("failed to initialize plugin %s: %w", name, err)
+	}
 
-	Initialize(reporter)
+  r.Plugins[name] = plugin
 
 	return nil
 }
 
-// GetReporter retrieves a reporter plugin by name
-func (r *Registry) GetReporter(name string) (Reporter, bool) {
+// Retrieve plugin by name
+func (r *Registry) Get(name string) (Plugin, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
-	reporter, exists := r.reporters[name]
-	return reporter, exists
-}
-
-// GetEnabledReporters returns all enabled reporter plugins
-func (r *Registry) GetEnabledReporters() []Reporter {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	var enabledReporters []Reporter
-	for _, reporter := range r.reporters {
-		enabledReporters = append(enabledReporters, reporter)
-	}
-	return enabledReporters
+  plugin, ok := r.Plugins[name]
+	return plugin, ok
 }
 
 // ShutdownAll gracefully shuts down all plugins
@@ -69,7 +55,7 @@ func (r *Registry) ShutdownAll() error {
 	defer r.mu.Unlock()
 
 	var errs []error
-	for name, plugin := range r.plugins {
+	for name, plugin := range r.Plugins {
 		if err := plugin.Shutdown(); err != nil {
 			errs = append(errs, fmt.Errorf("failed to shutdown plugin %s: %w", name, err))
 		}
@@ -79,4 +65,4 @@ func (r *Registry) ShutdownAll() error {
 		return fmt.Errorf("errors during shutdown: %v", errs)
 	}
 	return nil
-} 
+}
