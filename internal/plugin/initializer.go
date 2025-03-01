@@ -9,10 +9,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Initialize handles plugin initialization by ensuring all required config is present
 func Initialize(plugin Plugin) error {
 	configParams := getConfigParams(plugin.Name())
-
-	missingConfigKeys := missingConfigKeys(plugin.Manifest().ConfigKeys, configParams)
+	
+	// Set plugin name for all config keys
+	configKeys := plugin.Manifest().ConfigKeys
+	for i := range configKeys {
+		configKeys[i].PluginName = plugin.Name()
+	}
+	
+	missingConfigKeys := missingConfigKeys(configKeys, configParams)
 
 	if len(missingConfigKeys) > 0 {
 		changedConfigKeys, err := promptConfigKeys(missingConfigKeys)
@@ -20,9 +27,14 @@ func Initialize(plugin Plugin) error {
 			return err
 		}
 
-		saveChanges(changedConfigKeys)
+		err = saveChanges(changedConfigKeys)
+		if err != nil {
+			return err
+		}
 
-		err = plugin.Initialize()
+		// After config is saved, call plugin.Initialize() to let the plugin finish setup
+		settings := getPluginSettings(plugin.Name())
+		err = plugin.Initialize(settings)
 		if err != nil {
 			return err
 		}
@@ -31,6 +43,11 @@ func Initialize(plugin Plugin) error {
 	return nil
 }
 
+func getPluginSettings(pluginName string) map[string]interface{} {
+	return getConfigParams(pluginName)
+}
+
+// saveChanges saves the changed configuration to the cache directory
 func saveChanges(inputs []huh.Field) error {
 	if len(inputs) == 0 {
 		return nil
@@ -47,6 +64,8 @@ func saveChanges(inputs []huh.Field) error {
 	cacheConfig.ReadInConfig()
 
 	for _, input := range inputs {
+		// Set in both viper instances to ensure consistency
+		viper.Set(input.GetKey(), input.GetValue())
 		cacheConfig.Set(input.GetKey(), input.GetValue())
 	}
 
@@ -73,7 +92,7 @@ func promptConfigKeys(missingConfigKeys []ConfigKey) ([]huh.Field, error) {
 func promptConfigKey(key ConfigKey) huh.Field {
 	value := ""
 	input := huh.NewInput().
-		Key(key.Key).
+		Key(fmt.Sprintf("plugins.%s.%s", key.PluginName, key.Key)).
 		Title(key.Name).
 		Value(&value)
 	
@@ -101,18 +120,13 @@ func missingConfigKeys(configKeys []ConfigKey, configParams map[string]interface
 	return missingKeys
 }
 
-func saveConfigChanges(pluginName string, changedConfigKeys map[string]interface{}) error {
-	for key, value := range changedConfigKeys {
-		viper.Set(fmt.Sprintf("%s.%s", pluginName, key), value)
-	}
-	return viper.WriteConfig()
-}
-
 func getConfigParams(pluginName string) map[string]interface{} {
 	configPath := fmt.Sprintf("plugins.%s", pluginName)
 	sub := viper.Sub(configPath)
+
 	if sub == nil {
 		return make(map[string]interface{})
 	}
+
 	return sub.AllSettings()
 }

@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"context"
 	"time"
 )
 
@@ -24,6 +23,7 @@ type ConfigKey struct {
 	Description string
 	Required    bool
 	Secret      bool
+	PluginName  string // Name of the plugin this config belongs to
 }
 
 type PluginManifest struct {
@@ -32,18 +32,19 @@ type PluginManifest struct {
 
 // Plugin defines the base interface that all plugins must implement
 type Plugin interface {
+	// Returns the manifest for this plugin
 	Manifest() *PluginManifest
 	// Name returns the unique identifier for this plugin
 	Name() string
 	// Initialize sets up the plugin with its configuration
-	Initialize() error
+	Initialize(settings map[string]interface{}) error
 	// Shutdown performs cleanup when the plugin is being disabled/removed
 	Shutdown() error
 }
 
 // Reporter defines the interface for plugins that generate reports
-type Reporter interface {
+type StandupPlugin interface {
 	Plugin
-	// GenerateReport produces a report for the given time range
-	GenerateReport(ctx context.Context, timeRange TimeRange) (Report, error)
-} 
+
+	GetStandupContext(timeRange TimeRange) (string, error)
+}

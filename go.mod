@@ -6,12 +6,12 @@ toolchain go1.22.11
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
+	github.com/charmbracelet/huh v0.6.0
 	github.com/google/go-github/v68 v68.0.0
+	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/tmc/langchaingo v0.1.12
-	golang.org/x/oauth2 v0.20.0
-	golang.org/x/term v0.29.0
 )
 
 require (
@@ -20,8 +20,6 @@ require (
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/charmbracelet/bubbles v0.20.0 // indirect
 	github.com/charmbracelet/bubbletea v1.3.3 // indirect
-	github.com/charmbracelet/huh v0.6.0 // indirect
-	github.com/charmbracelet/huh/spinner v0.0.0-20250213143221-71c9d72e6770 // indirect
 	github.com/charmbracelet/lipgloss v1.0.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20250219214358-0881292cec0a // indirect
@@ -53,7 +51,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/schollz/progressbar/v3 v3.18.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -65,6 +62,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

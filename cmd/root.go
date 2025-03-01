@@ -4,7 +4,6 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
-	"daiv/internal/github"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -35,23 +34,23 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.daiv.yaml)")
-	
+
 	// Jira flags
 	rootCmd.PersistentFlags().String("jira-username", "", "Jira username (email)")
 	rootCmd.PersistentFlags().String("jira-token", "", "Jira API token")
 	rootCmd.PersistentFlags().String("jira-url", "", "Jira instance URL")
 	rootCmd.PersistentFlags().String("jira-project", "", "Jira project ID")
-	
+
 	// LLM flags
 	rootCmd.PersistentFlags().String("llm-anthropic-apikey", "", "Anthropic API Key")
-	
+
 	// GitHub flags
 	rootCmd.PersistentFlags().String("github-organization", "", "GitHub organization name")
 	rootCmd.PersistentFlags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
-	
+
 	// Worklog flags
 	rootCmd.PersistentFlags().String("worklog-path", "", "Path to the worklog file")
-	
+
 	// Bind flags to viper
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
@@ -85,17 +84,6 @@ func initConfig() {
 		fmt.Println("Error loading configs:", err)
 		os.Exit(1)
 	}
-
-
-	// if err := jira.InitializeJira(); err != nil {
-	// 	fmt.Println("Error initializing Jira:", err)
-	// 	os.Exit(1)
-	// }
-
-	if err := github.InitializeGithub(); err != nil {
-		fmt.Println("Error initializing GitHub:", err)
-		os.Exit(1)
-	}
 }
 
 func loadConfigs() error {
@@ -115,10 +103,10 @@ func loadConfigs() error {
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return fmt.Errorf("error reading config: %w", err)
-			} 
-		} else {
-				fmt.Println("Config file read: ", viper.ConfigFileUsed())
 			}
+		} else {
+			fmt.Println("Config file read: ", viper.ConfigFileUsed())
+		}
 
 		if err := readCacheConfig(); err != nil {
 			return err
@@ -153,10 +141,10 @@ func readCacheConfig() error {
 	if err := viper.MergeInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading cache config: %w", err)
-		} 
-	} else {
-			fmt.Println("Cache config file merged: ", cacheFile)
 		}
+	} else {
+		fmt.Println("Cache config file merged: ", cacheFile)
+	}
 
 	return nil
 }
