@@ -3,6 +3,7 @@ package plugin
 import (
 	"daiv/internal/utils"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 
@@ -27,13 +28,14 @@ func Initialize(plugin Plugin) error {
 		if err != nil {
 			return err
 		}
+	}
 
-		// After config is saved, call plugin.Initialize() to let the plugin finish setup
-		settings := getConfigParams(plugin.Name())
-		err = plugin.Initialize(settings)
-		if err != nil {
-			return err
-		}
+	// After config is saved, call plugin.Initialize() to let the plugin finish setup
+	settings := getConfigParams(plugin.Name())
+	slog.Info("Initializing plugin", "plugin", plugin.Name(), "settings", settings)
+	err := plugin.Initialize(settings)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -211,12 +213,12 @@ func missingConfigKeys(configKeys []ConfigKey, configParams map[string]interface
 	return missingKeys
 }
 
-func getConfigParams(pluginName string) map[string]interface{} {
+func getConfigParams(pluginName string) map[string]any {
 	configPath := fmt.Sprintf("plugins.%s", pluginName)
 	sub := viper.Sub(configPath)
 
 	if sub == nil {
-		return make(map[string]interface{})
+		return make(map[string]any)
 	}
 
 	return sub.AllSettings()

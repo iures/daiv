@@ -5,6 +5,7 @@ import (
 	"daiv/internal/plugin"
 	"daiv/internal/utils"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -15,21 +16,25 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 	var report strings.Builder
 
 	for _, repo := range gc.settings.Repos {
+		slog.Info("Getting standup context for repo", "repo", repo)
+
 		repoHasContent := false
 		repoSection := &strings.Builder{}
-		repoSection.WriteString(fmt.Sprintf("\n# Repository: %s\n", repo))
+    fmt.Fprintf(repoSection, "\n# Repository: %s\n", repo)
 
 		authoredPullRequestCommits, err := gc.renderAuthoredPullRequestCommits(repo, timeRange)
 		if err != nil {
 			return "", fmt.Errorf("error rendering authored pull request commits for %s/%s: %v", gc.settings.Org, repo, err)
 		}
-		repoSection.WriteString(authoredPullRequestCommits)
+
+    fmt.Fprintln(repoSection, authoredPullRequestCommits)
 
 		reviewedPullRequestCommits, err := gc.renderReviewedPullRequestCommits(repo, timeRange)
 		if err != nil {
 			return "", fmt.Errorf("error rendering reviewed pull request commits for %s/%s: %v", gc.settings.Org, repo, err)
 		}
-		repoSection.WriteString(reviewedPullRequestCommits)
+
+    fmt.Fprintln(repoSection, reviewedPullRequestCommits)
 
 		issuesReviewed, err := gc.searchReviewedPullRequests(repo, timeRange)
 		if err != nil {
@@ -48,7 +53,7 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 				}
 				if reviewReport != "" {
 					hasReviewsInPeriod = true
-					repoSection.WriteString(formatPullRequestFromIssue(issue))
+					fmt.Fprintln(repoSection, formatPullRequestFromIssue(issue))
 					repoSection.WriteString(reviewReport)
 
 					reviewCommentReport, err := gc.renderPrComments(repo, issue.GetNumber())
@@ -133,6 +138,9 @@ func (gc *GithubClient) searchPullRequests(repo string, timeRange plugin.TimeRan
 		timeRange.Start.Format("2006-01-02"),
 		timeRange.End.Format("2006-01-02"),
 	)
+
+  fmt.Println(query)
+
 	searchOptions := &externalGithub.SearchOptions{
 		ListOptions: externalGithub.ListOptions{PerPage: 100},
 	}

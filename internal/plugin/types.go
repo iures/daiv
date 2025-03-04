@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -63,5 +64,19 @@ type Plugin interface {
 type StandupPlugin interface {
 	Plugin
 
-	GetStandupContext(timeRange TimeRange) (string, error)
+	GetStandupContext(timeRange TimeRange) (StandupContext, error)
+}
+
+type StandupContext struct {
+	PluginName string
+	Content    string
+}
+
+func (s *StandupContext) String() string {
+	return fmt.Sprintf(
+		"\n\n<%s>\n%s\n</%s>\n\n",
+		s.PluginName,
+		s.Content,
+		s.PluginName,
+	)
 }

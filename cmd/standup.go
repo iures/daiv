@@ -91,39 +91,40 @@ func initFlags() {
 	viper.BindPFlag("toTime", standupCmd.Flags().Lookup("to-time"))
 	viper.BindPFlag("no-progress", standupCmd.Flags().Lookup("no-progress"))
 	viper.BindPFlag("prompt", standupCmd.Flags().Lookup("prompt"))
+
+  fmt.Println("Initialized standup flags")
 }
 
 func runStandup() error {
     registry := plugin.GetRegistry()
-    
-    // Make sure to clean up plugin resources when we're done
+
     defer func() {
         if err := registry.ShutdownAll(); err != nil {
             slog.Error("Error shutting down plugins", "error", err)
         }
     }()
-    
+
     now := time.Now()
     timeRange := plugin.TimeRange{
         Start: now.Add(-24 * time.Hour),
         End:   now,
     }
 
-    reporterPlugins := registry.GetStandupPlugins()
-    errChan := make(chan error, len(reporterPlugins))
-    reportChan := make(chan string, len(reporterPlugins)) // Make buffered channel
+    standupContextPlugins := registry.GetStandupPlugins()
+    errChan := make(chan error, len(standupContextPlugins))
+    reportChan := make(chan string, len(standupContextPlugins)) // Make buffered channel
 
     var wg sync.WaitGroup
-    for _, reporter := range reporterPlugins {
+    for _, reporter := range standupContextPlugins {
         wg.Add(1)
         go func(r plugin.StandupPlugin) {
             defer wg.Done()
-            report, err := r.GetStandupContext(timeRange)
+            standupContext, err := r.GetStandupContext(timeRange)
             if err != nil {
                 errChan <- fmt.Errorf("%s: %w", r.Name(), err)
                 return
             }
-            reportChan <- report
+            reportChan <- standupContext.String()
         }(reporter)
     }
 
@@ -134,20 +135,18 @@ func runStandup() error {
         close(errChan)
     }()
 
-    // Collect reports and errors
-    var reports []string
+    var standupContexts []string
     for report := range reportChan {
-        reports = append(reports, report)
+        standupContexts = append(standupContexts, report)
     }
 
-    // Check for errors
     for err := range errChan {
         if err != nil {
             return err
         }
     }
 
-    return formatAndDisplayReports(reports)
+    return formatAndDisplayReports(standupContexts)
 }
 
 func formatAndDisplayReports(reports []string) error {
