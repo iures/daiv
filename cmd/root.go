@@ -92,7 +92,6 @@ func initConfig() {
 }
 
 func registerPlugins() {
-  fmt.Println("RegisterPlugins")
 	registry := plugin.GetRegistry()
 	
 	githubPlugin := github.NewGitHubPlugin()
@@ -101,8 +100,6 @@ func registerPlugins() {
 		slog.Error("Failed to register GitHub plugin", "error", err)
 		os.Exit(1)
 	}
-	
-	slog.Info("Successfully registered all plugins")
 }
 
 func loadConfigs() error {
@@ -123,8 +120,6 @@ func loadConfigs() error {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return fmt.Errorf("error reading config: %w", err)
 			}
-		} else {
-			fmt.Println("Config file read: ", viper.ConfigFileUsed())
 		}
 
 		if err := readCacheConfig(); err != nil {
