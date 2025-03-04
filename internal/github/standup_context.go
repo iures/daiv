@@ -155,7 +155,8 @@ func (gc *GithubClient) searchReviewedPullRequests(repo string, timeRange plugin
 	ctx := context.Background()
 
 	query := fmt.Sprintf(
-		"is:pr reviewed-by:%s repo:%s/%s base:%s updated:%s..%s",
+		"is:pr -author:%s reviewed-by:%s repo:%s/%s base:%s updated:%s..%s",
+		gc.settings.Username,
 		gc.settings.Username,
 		gc.settings.Org,
 		repo,
@@ -275,26 +276,41 @@ func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue) 
 	}
 
 	var reviewReport strings.Builder
+	var relevantReviews []*externalGithub.PullRequestReview
+
+	// First collect all relevant reviews
 	for _, review := range reviews {
-		if review.User != nil && review.User.GetLogin() == gc.settings.Username {
+		if review.User != nil && review.User.GetLogin() == gc.settings.Username  {
 			if review.GetSubmittedAt().IsZero() || !utils.IsDateTimeInThreshold(review.GetSubmittedAt().Time) {
 				continue
 			}
-			reviewReport.WriteString(formatPullRequestReview(review, issue))
+			relevantReviews = append(relevantReviews, review)
+		}
+	}
+
+	if len(relevantReviews) > 0 {
+		// Sort reviews by submission date
+		slices.SortFunc(relevantReviews, func(a, b *externalGithub.PullRequestReview) int {
+			return a.GetSubmittedAt().Compare(b.GetSubmittedAt().Time)
+		})
+
+		// Write PR header once
+		reviewReport.WriteString(fmt.Sprintf("### PR #%d: %s\n", issue.GetNumber(), issue.GetTitle()))
+		
+		// Write all reviews for this PR
+		for _, review := range relevantReviews {
+			reviewReport.WriteString(formatPullRequestReview(review))
 		}
 	}
 
 	if reviewReport.Len() > 0 {
-		return "### Reviews:\n" + reviewReport.String(), nil
+		return reviewReport.String(), nil
 	}
 	return "", nil
 }
 
-func formatPullRequestReview(review *externalGithub.PullRequestReview, issue *externalGithub.Issue) string {
-	report := fmt.Sprintf("- PR: %d - %s\nAuthor: %s, State: %s, Submitted: %s\n",
-		issue.GetNumber(),
-		issue.GetTitle(),
-		*review.GetUser().Login,
+func formatPullRequestReview(review *externalGithub.PullRequestReview) string {
+	report := fmt.Sprintf("- State: %s, Submitted: %s\n",
 		review.GetState(),
 		review.GetSubmittedAt().Format("2006-01-02 15:04:05"))
 
