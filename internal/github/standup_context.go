@@ -20,21 +20,16 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 
 		repoHasContent := false
 		repoSection := &strings.Builder{}
-    fmt.Fprintf(repoSection, "\n# Repository: %s\n", repo)
+		fmt.Fprintf(repoSection, "\n# Repository: %s\n", repo)
 
-		authoredPullRequestCommits, err := gc.renderAuthoredPullRequestCommits(repo, timeRange)
+		authoredPRs, err := gc.renderAuthoredPullRequestCommits(repo, timeRange)
 		if err != nil {
 			return "", fmt.Errorf("error rendering authored pull request commits for %s/%s: %v", gc.settings.Org, repo, err)
 		}
-
-    fmt.Fprintln(repoSection, authoredPullRequestCommits)
-
-		reviewedPullRequestCommits, err := gc.renderReviewedPullRequestCommits(repo, timeRange)
-		if err != nil {
-			return "", fmt.Errorf("error rendering reviewed pull request commits for %s/%s: %v", gc.settings.Org, repo, err)
+		if authoredPRs != "" {
+			repoHasContent = true
+			repoSection.WriteString(authoredPRs)
 		}
-
-    fmt.Fprintln(repoSection, reviewedPullRequestCommits)
 
 		issuesReviewed, err := gc.searchReviewedPullRequests(repo, timeRange)
 		if err != nil {
@@ -43,7 +38,7 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 
 		if len(issuesReviewed) > 0 {
 			repoHasContent = true
-			repoSection.WriteString("## Reviewed Pull Requests:\n")
+			repoSection.WriteString("\n## Reviewed Pull Requests\n")
 			
 			var hasReviewsInPeriod bool
 			for _, issue := range issuesReviewed {
@@ -90,7 +85,7 @@ func (gc *GithubClient) renderAuthoredPullRequestCommits(repo string, timeRange 
 	var report strings.Builder
 
 	if len(issues) > 0 {
-		report.WriteString("## Authored Pull Requests:\n")
+		report.WriteString("\n## Authored Pull Requests\n")
 		for _, issue := range issues {
 			report.WriteString(formatPullRequestFromIssue(issue))
 
@@ -138,8 +133,6 @@ func (gc *GithubClient) searchPullRequests(repo string, timeRange plugin.TimeRan
 		timeRange.Start.Format("2006-01-02"),
 		timeRange.End.Format("2006-01-02"),
 	)
-
-  fmt.Println(query)
 
 	searchOptions := &externalGithub.SearchOptions{
 		ListOptions: externalGithub.ListOptions{PerPage: 100},
@@ -194,7 +187,7 @@ func (gc *GithubClient) renderCommits(repo string, prNumber int) (string, error)
 	var commitReport strings.Builder
 	relevantCommits := filterRelevantCommits(prCommits, gc.settings.Username)
 	if len(relevantCommits) > 0 {
-		commitReport.WriteString("## Commits:\n\n")
+		commitReport.WriteString("#### Commits:\n")
 		for _, commit := range relevantCommits {
 			commitReport.WriteString(formatCommit(commit))
 		}
@@ -214,7 +207,7 @@ func (gc *GithubClient) renderPrComments(repo string, prNumber int) (string, err
 	var commentReport strings.Builder
 	relevantComments := filterRelevantPRComments(comments, gc.settings.Username)
 	if len(relevantComments) > 0 {
-		commentReport.WriteString("## Commits:\n\n")
+		commentReport.WriteString("### Comments:\n")
 		for _, comment := range relevantComments {
 			commentReport.WriteString(formatComment(comment))
 		}
@@ -246,22 +239,24 @@ func filterRelevantCommits(commits []*externalGithub.RepositoryCommit, username 
 }
 
 func formatPullRequestFromIssue(issue *externalGithub.Issue) string {
-	return fmt.Sprintf("# PR #%d: %s (Status: %s)\n", issue.GetNumber(), issue.GetTitle(), issue.GetState())
+	return fmt.Sprintf( "### PR (%s) #%d: %s\n\n", 
+		strings.ToUpper(issue.GetState()),
+		issue.GetNumber(), 
+		issue.GetTitle(),
+	)
 }
 
 func formatCommit(commit *externalGithub.RepositoryCommit) string {
 	return fmt.Sprintf(
-		"%s - %s: \n```\n%s\n```\n\n",
-		commit.GetSHA()[:7],
-		commit.GetCommit().GetCommitter().GetDate().Format("2006-01-02 15:04:05"),
+		"##### %s\n\n",
 		commit.GetCommit().GetMessage(),
 	)
 }
 
 func formatComment(comment *externalGithub.PullRequestComment) string {
 	return fmt.Sprintf(
-		"%s - %s: \n```\n%s\n```\n\n",
-		comment.CreatedAt.Time.String(),
+		"**%s** - @%s:\n```\n%s\n```\n\n",
+		comment.CreatedAt.Time.Format("2006-01-02 15:04:05"),
 		comment.User.GetLogin(),
 		*comment.Body,
 	)
@@ -289,15 +284,10 @@ func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue) 
 	}
 
 	if len(relevantReviews) > 0 {
-		// Sort reviews by submission date
 		slices.SortFunc(relevantReviews, func(a, b *externalGithub.PullRequestReview) int {
 			return a.GetSubmittedAt().Compare(b.GetSubmittedAt().Time)
 		})
 
-		// Write PR header once
-		reviewReport.WriteString(fmt.Sprintf("### PR #%d: %s\n", issue.GetNumber(), issue.GetTitle()))
-		
-		// Write all reviews for this PR
 		for _, review := range relevantReviews {
 			reviewReport.WriteString(formatPullRequestReview(review))
 		}
@@ -310,12 +300,12 @@ func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue) 
 }
 
 func formatPullRequestReview(review *externalGithub.PullRequestReview) string {
-	report := fmt.Sprintf("- State: %s, Submitted: %s\n",
-		review.GetState(),
+	report := fmt.Sprintf("**Review %s** - %s\n",
+		strings.ToUpper(review.GetState()),
 		review.GetSubmittedAt().Format("2006-01-02 15:04:05"))
 
 	if body := review.GetBody(); body != "" {
-		report += fmt.Sprintf("  Comment:\n```\n%s\n```\n", body)
+		report += fmt.Sprintf("```\n%s\n```\n\n", body)
 	}
 	return report
 }

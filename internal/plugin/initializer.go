@@ -61,9 +61,6 @@ func saveChanges(pluginName string, changedConfigKeys []ConfigKey) error {
 		configKey := fmt.Sprintf("plugins.%s.%s", pluginName, key.Key)
 		value := key.Value
 
-		fmt.Println("key", key.Key)
-		fmt.Println("value", value)
-
 		if key.Type == ConfigTypeMultiline {
 			if value == nil {
 				value = []string{} // Handle nil value for multiline config
