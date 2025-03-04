@@ -3,6 +3,7 @@ package github
 import (
 	"daiv/internal/plugin"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"strings"
 )
@@ -49,15 +50,18 @@ func (g *GitHubPlugin) Manifest() *plugin.PluginManifest {
 	}
 }
 
-func (g *GitHubPlugin) Initialize(settings map[string]interface{}) error {
+func (g *GitHubPlugin) Initialize(settings map[string]any) error {
 	token, err := getGhCliToken()
 	if err != nil {
 		return fmt.Errorf("failed to get gh cli token: %w", err)
 	}
 
-	repos := settings["repositories"].([]string)
-	if len(repos) == 0 {
-		repos = []string{}
+	repos := settings["repositories"].([]any)
+	var reposStr []string
+	for _, repo := range repos {
+		if str, ok := repo.(string); ok {
+			reposStr = append(reposStr, str)
+		}
 	}
 	username, ok := settings["username"].(string)
 	if !ok {
@@ -72,8 +76,10 @@ func (g *GitHubPlugin) Initialize(settings map[string]interface{}) error {
 		Username: username,
 		Token:    token,
 		Org:      org,
-		Repos:    repos,
+		Repos:    reposStr,
 	})
+
+	slog.Info("GitHub plugin initialized", "username", username, "organization", org, "repositories", reposStr)
 
 	return nil
 }
@@ -82,8 +88,16 @@ func (g *GitHubPlugin) Shutdown() error {
 	return nil
 }
 
-func (g *GitHubPlugin) GetStandupContext(timeRange plugin.TimeRange) (string, error) {
-	return g.client.GetStandupContext(timeRange)
+func (g *GitHubPlugin) GetStandupContext(timeRange plugin.TimeRange) (plugin.StandupContext, error) {
+	standupContext, err := g.client.GetStandupContext(timeRange)
+	if err != nil {
+		return plugin.StandupContext{}, fmt.Errorf("failed to get standup context: %w", err)
+	}
+
+	return plugin.StandupContext{
+		PluginName: g.Name(),
+		Content:    standupContext,
+	}, nil
 }
 
 func getGhCliToken() (string, error) {
