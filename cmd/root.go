@@ -4,11 +4,12 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
-	"daiv/internal/github"
 	"daiv/internal/jira"
+	"daiv/internal/plugin"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -36,29 +37,29 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.daiv.yaml)")
-	
+
 	// Jira flags
 	rootCmd.PersistentFlags().String("jira-username", "", "Jira username (email)")
 	rootCmd.PersistentFlags().String("jira-token", "", "Jira API token")
 	rootCmd.PersistentFlags().String("jira-url", "", "Jira instance URL")
 	rootCmd.PersistentFlags().String("jira-project", "", "Jira project ID")
-	
+
 	// LLM flags
 	rootCmd.PersistentFlags().String("llm-anthropic-apikey", "", "Anthropic API Key")
-	
+
 	// GitHub flags
 	rootCmd.PersistentFlags().String("github-organization", "", "GitHub organization name")
 	rootCmd.PersistentFlags().StringSlice("github-repositories", []string{}, "Comma-separated list of repository names to monitor")
-	
+
 	// Worklog flags
 	rootCmd.PersistentFlags().String("worklog-path", "", "Path to the worklog file")
-	
+
 	// Bind flags to viper
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
-	viper.BindPFlag("jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
-	viper.BindPFlag("jira.token", rootCmd.PersistentFlags().Lookup("jira-token"))
-	viper.BindPFlag("jira.url", rootCmd.PersistentFlags().Lookup("jira-url"))
-	viper.BindPFlag("jira.project", rootCmd.PersistentFlags().Lookup("jira-project"))
+	viper.BindPFlag("plugins.jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
+	viper.BindPFlag("plugins.jira.token", rootCmd.PersistentFlags().Lookup("jira-token"))
+	viper.BindPFlag("plugins.jira.url", rootCmd.PersistentFlags().Lookup("jira-url"))
+	viper.BindPFlag("plugins.jira.project", rootCmd.PersistentFlags().Lookup("jira-project"))
 	viper.BindPFlag("worklog.path", rootCmd.PersistentFlags().Lookup("worklog-path"))
 	viper.BindPFlag("llm.anthropic.apikey", rootCmd.PersistentFlags().Lookup("llm-anthropic-apikey"))
 	viper.BindPFlag("github.organization", rootCmd.PersistentFlags().Lookup("github-organization"))
@@ -69,10 +70,10 @@ func init() {
 
 	// Bind environment variables
 	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")
-	viper.BindEnv("jira.token", "JIRA_API_TOKEN")
-	viper.BindEnv("jira.username", "JIRA_USERNAME")
-	viper.BindEnv("jira.url", "JIRA_URL")
-	viper.BindEnv("jira.project", "JIRA_PROJECT")
+	viper.BindEnv("plugins.jira.token", "JIRA_API_TOKEN")
+	viper.BindEnv("plugins.jira.username", "JIRA_USERNAME")
+	viper.BindEnv("plugins.jira.url", "JIRA_URL")
+	viper.BindEnv("plugins.jira.project", "JIRA_PROJECT")
 	viper.BindEnv("github.organization", "GITHUB_ORG")
 	viper.BindEnv("github.repositories", "GITHUB_REPOS")
 	viper.BindEnv("github.username", "GITHUB_USERNAME")
@@ -87,13 +88,27 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	if err := jira.InitializeJira(); err != nil {
-		fmt.Println("Error initializing Jira:", err)
+	registerPlugins()
+}
+
+func registerPlugins() {
+	registry := plugin.GetRegistry()
+	
+	// githubPlugin := github.NewGitHubPlugin()
+
+	// if err := registry.Register(githubPlugin); err != nil {
+	// 	slog.Error("Failed to register GitHub plugin", "error", err)
+	// 	os.Exit(1)
+	// }
+
+	jiraPlugin, err := jira.NewJiraPlugin()
+	if err != nil {
+		slog.Error("Failed to register Jira plugin", "error", err)
 		os.Exit(1)
 	}
 
-	if err := github.InitializeGithub(); err != nil {
-		fmt.Println("Error initializing GitHub:", err)
+	if err := registry.Register(jiraPlugin); err != nil {
+		slog.Error("Failed to register Jira plugin", "error", err)
 		os.Exit(1)
 	}
 }
@@ -115,10 +130,8 @@ func loadConfigs() error {
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return fmt.Errorf("error reading config: %w", err)
-			} 
-		} else {
-				fmt.Println("Config file read: ", viper.ConfigFileUsed())
 			}
+		}
 
 		if err := readCacheConfig(); err != nil {
 			return err
@@ -153,10 +166,8 @@ func readCacheConfig() error {
 	if err := viper.MergeInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading cache config: %w", err)
-		} 
-	} else {
-			fmt.Println("Cache config file merged: ", cacheFile)
 		}
+	}
 
 	return nil
 }

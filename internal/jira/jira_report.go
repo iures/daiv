@@ -1,7 +1,6 @@
-package standup
+package jira
 
 import (
-	"daiv/internal/jira"
 	"daiv/internal/utils"
 	"fmt"
 	"slices"
@@ -12,29 +11,16 @@ import (
 )
 
 type JiraReport struct {
-	Issues         []goJira.Issue
-	FromTime       time.Time
-	ToTime         time.Time
+	Issues []goJira.Issue
 }
 
 func NewJiraReport() *JiraReport {
-	config, err := jira.GetJiraConfig()
-	if err != nil || !config.IsConfigured() {
-		return nil
-	}
-
 	return &JiraReport{
-		Issues:   []goJira.Issue{},
-		FromTime: time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour),
-		ToTime:   time.Now().Truncate(24 * time.Hour),
+		Issues: []goJira.Issue{},
 	}
 }
 
 func (r *JiraReport) Render() (string, error) {
-	if err := r.fetchIssues(); err != nil {
-		return "", fmt.Errorf("failed to fetch issues: %w", err)
-	}
-
 	if len(r.Issues) == 0 {
 		return "", nil
 	}
@@ -42,46 +28,6 @@ func (r *JiraReport) Render() (string, error) {
 	var report strings.Builder
 	r.renderIssues(&report)
 	return report.String(), nil
-}
-
-func (r *JiraReport) fetchIssues() error {
-	config, err := jira.GetJiraConfig()
-	if err != nil {
-		return err
-	}
-
-	// Skip if Jira is not configured
-	if !config.IsConfigured() {
-		return nil
-	}
-
-	client, err := jira.NewJiraClient()
-	if err != nil {
-		return err
-	}
-
-	searchString := fmt.Sprintf(`
-		assignee = currentUser()
-		AND project = %s
-		AND status != Closed
-		AND sprint IN openSprints()
-		AND updated > -1d
-	`, config.Project)
-
-	opt := &goJira.SearchOptions{
-		MaxResults: 100,
-		Expand:     "changelog",
-		Fields:     []string{"summary", "description", "status", "changelog", "comment"},
-	}
-
-	issues, _, err := client.Issue.Search(searchString, opt)
-
-	if err != nil {
-		return err
-	}
-
-	r.Issues = issues
-	return nil
 }
 
 func (r *JiraReport) renderIssues(report *strings.Builder) {
@@ -169,7 +115,7 @@ func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue
 			continue
 		}
 
-		if createdTime.Before(r.FromTime) {
+		if !utils.IsDateTimeInThreshold(createdTime) {
 			continue
 		}
 
