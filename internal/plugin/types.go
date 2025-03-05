@@ -42,6 +42,7 @@ type ConfigKey struct {
 	Description string
 	Required    bool
 	Secret      bool
+	EnvVar      string
 }
 
 type PluginManifest struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"daiv/internal/plugin"
 	"fmt"
+	"log/slog"
 
 	jira "github.com/andygrunwald/go-jira"
 )
@@ -13,12 +14,7 @@ type JiraClient struct {
 	config *JiraConfig
 }
 
-func NewJiraClient() (*JiraClient, error) {
-	config, err := GetJiraConfig()
-	if err != nil {
-		return nil, err
-	}
-
+func NewJiraClient(config *JiraConfig) (*JiraClient, error) {
 	tp := jira.BasicAuthTransport{
 		Username: config.Username,
 		Password: config.Token,
@@ -36,11 +32,6 @@ func NewJiraClient() (*JiraClient, error) {
 }
 
 func (j *JiraClient) GetActivityReport(ctx context.Context, timeRange plugin.TimeRange) (string, error) {
-	// Skip if Jira is not configured
-	if !j.config.IsConfigured() {
-		return "", nil
-	}
-
 	report := NewJiraReport()
 	issues, err := j.fetchUpdatedIssues(timeRange)
 	if err != nil {
@@ -51,19 +42,18 @@ func (j *JiraClient) GetActivityReport(ctx context.Context, timeRange plugin.Tim
 	return report.Render()
 }
 
-
 func (j *JiraClient) fetchUpdatedIssues(timeRange plugin.TimeRange) ([]jira.Issue, error) {
 	fromTime := timeRange.Start.Format("2006-01-02")
 	toTime := timeRange.End.Format("2006-01-02")
 
-	searchString := fmt.Sprintf(`
-		assignee = currentUser()
-		AND project = %s
-		AND status != Closed
-		AND sprint IN openSprints()
-		AND updated >= %s
-		AND updated <= %s
-	`, j.config.Project, fromTime, toTime)
+	searchString := fmt.Sprintf(
+		`assignee = currentUser() AND project = %s AND status != Closed AND sprint IN openSprints() AND updatedDate >= "%s" AND updatedDate <= "%s"`,
+		j.config.Project,
+		fromTime,
+		toTime,
+	)
+
+	slog.Info("Search string", "searchString", searchString)
 
 	opt := &jira.SearchOptions{
 		MaxResults: 100,

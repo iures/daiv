@@ -3,7 +3,7 @@ package plugin
 import (
 	"daiv/internal/utils"
 	"fmt"
-	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -13,8 +13,8 @@ import (
 
 // Initialize handles plugin initialization by ensuring all required config is present
 func Initialize(plugin Plugin) error {
-	configParams := getConfigParams(plugin.Name())
 	configKeys := plugin.Manifest().ConfigKeys
+	configParams := getConfigParams(configKeys)
 
 	missingConfigKeys := missingConfigKeys(configKeys, configParams)
 
@@ -24,15 +24,14 @@ func Initialize(plugin Plugin) error {
 			return err
 		}
 
-		err = saveChanges(plugin.Name(), missingConfigKeys)
+		err = saveChanges(missingConfigKeys)
 		if err != nil {
 			return err
 		}
 	}
 
 	// After config is saved, call plugin.Initialize() to let the plugin finish setup
-	settings := getConfigParams(plugin.Name())
-	slog.Info("Initializing plugin", "plugin", plugin.Name(), "settings", settings)
+	settings := getConfigParams(configKeys)
 	err := plugin.Initialize(settings)
 	if err != nil {
 		return err
@@ -42,7 +41,7 @@ func Initialize(plugin Plugin) error {
 }
 
 // saveChanges saves the changed configuration to the cache directory
-func saveChanges(pluginName string, changedConfigKeys []ConfigKey) error {
+func saveChanges(changedConfigKeys []ConfigKey) error {
 	if len(changedConfigKeys) == 0 {
 		return nil
 	}
@@ -58,7 +57,6 @@ func saveChanges(pluginName string, changedConfigKeys []ConfigKey) error {
 	cacheConfig.ReadInConfig()
 
 	for _, key := range changedConfigKeys {
-		configKey := fmt.Sprintf("plugins.%s.%s", pluginName, key.Key)
 		value := key.Value
 
 		if key.Type == ConfigTypeMultiline {
@@ -72,8 +70,12 @@ func saveChanges(pluginName string, changedConfigKeys []ConfigKey) error {
 			}
 		}
 
-		viper.Set(configKey, value)
-		cacheConfig.Set(configKey, value)
+		if key.EnvVar != "" {
+			os.Setenv(key.EnvVar, fmt.Sprintf("%v", value))
+		} else {
+			viper.Set(key.Key, value)
+			cacheConfig.Set(key.Key, value)
+		}
 	}
 
 	return cacheConfig.WriteConfigAs(configPath)
@@ -210,13 +212,16 @@ func missingConfigKeys(configKeys []ConfigKey, configParams map[string]interface
 	return missingKeys
 }
 
-func getConfigParams(pluginName string) map[string]any {
-	configPath := fmt.Sprintf("plugins.%s", pluginName)
-	sub := viper.Sub(configPath)
+func getConfigParams(configKeys []ConfigKey) map[string]any {
+	configParams := make(map[string]any)
 
-	if sub == nil {
-		return make(map[string]any)
+	for _, key := range configKeys {
+		if key.EnvVar != "" {
+			configParams[key.Key] = os.Getenv(key.EnvVar)
+		} else {
+			configParams[key.Key] = viper.Get(key.Key)
+		}
 	}
 
-	return sub.AllSettings()
+	return configParams
 }

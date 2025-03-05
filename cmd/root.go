@@ -4,7 +4,7 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
-	"daiv/internal/github"
+	"daiv/internal/jira"
 	"daiv/internal/plugin"
 	"errors"
 	"fmt"
@@ -56,10 +56,10 @@ func init() {
 
 	// Bind flags to viper
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
-	viper.BindPFlag("jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
-	viper.BindPFlag("jira.token", rootCmd.PersistentFlags().Lookup("jira-token"))
-	viper.BindPFlag("jira.url", rootCmd.PersistentFlags().Lookup("jira-url"))
-	viper.BindPFlag("jira.project", rootCmd.PersistentFlags().Lookup("jira-project"))
+	viper.BindPFlag("plugins.jira.username", rootCmd.PersistentFlags().Lookup("jira-username"))
+	viper.BindPFlag("plugins.jira.token", rootCmd.PersistentFlags().Lookup("jira-token"))
+	viper.BindPFlag("plugins.jira.url", rootCmd.PersistentFlags().Lookup("jira-url"))
+	viper.BindPFlag("plugins.jira.project", rootCmd.PersistentFlags().Lookup("jira-project"))
 	viper.BindPFlag("worklog.path", rootCmd.PersistentFlags().Lookup("worklog-path"))
 	viper.BindPFlag("llm.anthropic.apikey", rootCmd.PersistentFlags().Lookup("llm-anthropic-apikey"))
 	viper.BindPFlag("github.organization", rootCmd.PersistentFlags().Lookup("github-organization"))
@@ -70,10 +70,10 @@ func init() {
 
 	// Bind environment variables
 	viper.BindEnv("llm.anthropic.apikey", "ANTHROPIC_API_KEY")
-	viper.BindEnv("jira.token", "JIRA_API_TOKEN")
-	viper.BindEnv("jira.username", "JIRA_USERNAME")
-	viper.BindEnv("jira.url", "JIRA_URL")
-	viper.BindEnv("jira.project", "JIRA_PROJECT")
+	viper.BindEnv("plugins.jira.token", "JIRA_API_TOKEN")
+	viper.BindEnv("plugins.jira.username", "JIRA_USERNAME")
+	viper.BindEnv("plugins.jira.url", "JIRA_URL")
+	viper.BindEnv("plugins.jira.project", "JIRA_PROJECT")
 	viper.BindEnv("github.organization", "GITHUB_ORG")
 	viper.BindEnv("github.repositories", "GITHUB_REPOS")
 	viper.BindEnv("github.username", "GITHUB_USERNAME")
@@ -94,10 +94,21 @@ func initConfig() {
 func registerPlugins() {
 	registry := plugin.GetRegistry()
 	
-	githubPlugin := github.NewGitHubPlugin()
+	// githubPlugin := github.NewGitHubPlugin()
 
-	if err := registry.Register(githubPlugin); err != nil {
-		slog.Error("Failed to register GitHub plugin", "error", err)
+	// if err := registry.Register(githubPlugin); err != nil {
+	// 	slog.Error("Failed to register GitHub plugin", "error", err)
+	// 	os.Exit(1)
+	// }
+
+	jiraPlugin, err := jira.NewJiraPlugin()
+	if err != nil {
+		slog.Error("Failed to register Jira plugin", "error", err)
+		os.Exit(1)
+	}
+
+	if err := registry.Register(jiraPlugin); err != nil {
+		slog.Error("Failed to register Jira plugin", "error", err)
 		os.Exit(1)
 	}
 }
@@ -156,8 +167,6 @@ func readCacheConfig() error {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading cache config: %w", err)
 		}
-	} else {
-		fmt.Println("Cache config file merged: ", cacheFile)
 	}
 
 	return nil

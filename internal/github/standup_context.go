@@ -5,7 +5,6 @@ import (
 	"daiv/internal/plugin"
 	"daiv/internal/utils"
 	"fmt"
-	"log/slog"
 	"slices"
 	"strings"
 
@@ -16,8 +15,6 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 	var report strings.Builder
 
 	for _, repo := range gc.settings.Repos {
-		slog.Info("Getting standup context for repo", "repo", repo)
-
 		repoHasContent := false
 		repoSection := &strings.Builder{}
 		fmt.Fprintf(repoSection, "\n# Repository: %s\n", repo)
