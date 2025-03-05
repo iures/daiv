@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -37,31 +36,6 @@ var standupCmd = &cobra.Command{
 }
 
 func validateConfig() error {
-	required := []string{
-		"jira.username",
-		"jira.token",
-		"jira.url",
-		"github.organization",
-	}
-
-	for _, key := range required {
-		if viper.GetString(key) == "" {
-			return fmt.Errorf("missing required config: %s", key)
-		}
-	}
-
-	repos := viper.GetStringSlice("github.repositories")
-	if len(repos) == 0 {
-		return fmt.Errorf("github.repositories must contain at least one repository")
-	}
-
-	if path := viper.GetString("worklog.path"); path != "" {
-		dir := filepath.Dir(path)
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			return fmt.Errorf("worklog directory does not exist: %s", dir)
-		}
-	}
-
 	// Validate time formats
 	_, err := time.Parse(time.RFC3339, viper.GetString("fromTime"))
 	if err != nil {
@@ -105,10 +79,9 @@ func runStandup() error {
 		}
 	}()
 
-	now := time.Now()
 	timeRange := plugin.TimeRange{
-		Start: now.Add(-24 * time.Hour),
-		End:   now,
+		Start: viper.GetTime("fromTime"),
+		End:   viper.GetTime("toTime"),
 	}
 
 	standupContextPlugins := registry.GetStandupPlugins()
@@ -125,6 +98,7 @@ func runStandup() error {
 				errChan <- fmt.Errorf("%s: %w", r.Name(), err)
 				return
 			}
+
 			reportChan <- standupContext.String()
 		}(reporter)
 	}
@@ -143,6 +117,7 @@ func runStandup() error {
 
 	for err := range errChan {
 		if err != nil {
+			slog.Error("Error getting standup context", "error", err)
 			return err
 		}
 	}

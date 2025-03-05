@@ -11,21 +11,12 @@ import (
 )
 
 type JiraReport struct {
-	Issues         []goJira.Issue
-	FromTime       time.Time
-	ToTime         time.Time
+	Issues []goJira.Issue
 }
 
 func NewJiraReport() *JiraReport {
-	config, err := GetJiraConfig()
-	if err != nil || !config.IsConfigured() {
-		return nil
-	}
-
 	return &JiraReport{
-		Issues:   []goJira.Issue{},
-		FromTime: time.Now().AddDate(0, 0, -1).Truncate(24 * time.Hour),
-		ToTime:   time.Now().Truncate(24 * time.Hour),
+		Issues: []goJira.Issue{},
 	}
 }
 
@@ -124,7 +115,7 @@ func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue
 			continue
 		}
 
-		if createdTime.Before(r.FromTime) {
+		if !utils.IsDateTimeInThreshold(createdTime) {
 			continue
 		}
 

@@ -3,7 +3,15 @@ package jira
 import (
 	"context"
 	"daiv/internal/plugin"
+	"fmt"
 )
+
+type JiraConfig struct {
+	Username string
+	Token    string
+	URL      string
+	Project  string
+}
 
 type JiraPlugin struct {
 	client *JiraClient
@@ -11,38 +19,68 @@ type JiraPlugin struct {
 }
 
 func NewJiraPlugin() (*JiraPlugin, error) {
-  client, err := NewJiraClient()
-  if err != nil {
-    return nil, err
-  }
-
-  config, err := GetJiraConfig()
-  if err != nil {
-    return nil, err
-  }
-
-  return &JiraPlugin{
-    client: client,
-    config: config,
-  }, nil
-}
-
-func (j *JiraPlugin) Manifest() *plugin.PluginManifest {
-	return &plugin.PluginManifest{
-		ConfigKeys: []plugin.ConfigKey{
-			{Key: "username", Name: "Jira Username", Description: "The username for the Jira user", Required: true, Secret: false},
-			{Key: "password", Name: "Jira Password", Description: "The password for the Jira user", Required: true, Secret: true},
-			{Key: "url", Name: "Jira URL", Description: "The URL for the Jira instance", Required: true, Secret: false},
-			{Key: "project", Name: "Jira Project", Description: "The project to generate the report for", Required: true, Secret: false},
-		},
-	}
+	return &JiraPlugin{}, nil
 }
 
 func (j *JiraPlugin) Name() string {
 	return "jira"
 }
 
-func (j *JiraPlugin) Initialize() error {
+func (j *JiraPlugin) Manifest() *plugin.PluginManifest {
+	return &plugin.PluginManifest{
+		ConfigKeys: []plugin.ConfigKey{
+			{
+				Type:        plugin.ConfigTypeString,
+				Key:         "jira.username",
+				Name:        "Jira Username",
+				Description: "The username for the Jira user",
+				Required:    true,
+				Secret:      false,
+			},
+			{
+				Type:        plugin.ConfigTypeString,
+				Key:         "jira.token",
+				Name:        "Jira API Token",
+				Description: "The API token for the Jira user",
+				Required:    true,
+				EnvVar:      "JIRA_API_TOKEN",
+			},
+			{
+				Type:        plugin.ConfigTypeString,
+				Key:         "jira.url",
+				Name:        "Jira URL",
+				Description: "The URL for the Jira instance",
+				Required:    true,
+				Secret:      false,
+			},
+			{
+				Type:        plugin.ConfigTypeString,
+				Key:         "jira.project",
+				Name:        "Jira Project",
+				Description: "The project to generate the report for",
+				Required:    true,
+				Secret:      false,
+			},
+		},
+	}
+}
+
+func (j *JiraPlugin) Initialize(settings map[string]any) error {
+	config := &JiraConfig{
+		Username: settings["jira.username"].(string),
+		Token:    settings["jira.token"].(string),
+		URL:      settings["jira.url"].(string),
+		Project:  settings["jira.project"].(string),
+	}
+
+	client, err := NewJiraClient(config)
+	if err != nil {
+		return fmt.Errorf("failed to create Jira client: %w", err)
+	}
+
+	j.client = client
+	j.config = config
+
 	return nil
 }
 
@@ -50,15 +88,14 @@ func (j *JiraPlugin) Shutdown() error {
 	return nil
 }
 
-func (j *JiraPlugin) GenerateReport(ctx context.Context, timeRange plugin.TimeRange) (plugin.Report, error) {
-	content, err := j.client.GetActivityReport(ctx, timeRange)
+func (j *JiraPlugin) GetStandupContext(timeRange plugin.TimeRange) (plugin.StandupContext, error) {
+	content, err := j.client.GetActivityReport(context.Background(), timeRange)
 	if err != nil {
-		return plugin.Report{}, err
+		return plugin.StandupContext{}, fmt.Errorf("failed to get activity report: %w", err)
 	}
 
-	return plugin.Report{
+	return plugin.StandupContext{
 		PluginName: j.Name(),
 		Content:    content,
-		Metadata:   map[string]interface{}{ },
 	}, nil
 } 

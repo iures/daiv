@@ -3,7 +3,6 @@ package github
 import (
 	"daiv/internal/plugin"
 	"fmt"
-	"log/slog"
 	"os/exec"
 	"strings"
 )
@@ -78,8 +77,6 @@ func (g *GitHubPlugin) Initialize(settings map[string]any) error {
 		Org:      org,
 		Repos:    reposStr,
 	})
-
-	slog.Info("GitHub plugin initialized", "username", username, "organization", org, "repositories", reposStr)
 
 	return nil
 }
