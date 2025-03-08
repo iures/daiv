@@ -12,6 +12,7 @@ import (
 type JiraClient struct {
 	client *jira.Client
 	config *JiraConfig
+	user   *jira.User
 }
 
 func NewJiraClient(config *JiraConfig) (*JiraClient, error) {
@@ -31,9 +32,21 @@ func NewJiraClient(config *JiraConfig) (*JiraClient, error) {
 	}, nil
 }
 
+func (j *JiraClient) GetSelf() (*jira.User, error) {
+	user, _, err := j.client.User.GetSelf()
+	if err != nil {
+		return nil, err
+	}
+
+	j.user = user
+
+	return user, nil
+}
+
 func (j *JiraClient) GetActivityReport(ctx context.Context, timeRange plugin.TimeRange) (string, error) {
 	report := NewJiraReport()
 	report.TimeRange = timeRange
+	report.User = j.user
 
 	issues, err := j.fetchUpdatedIssues(timeRange)
 	if err != nil {

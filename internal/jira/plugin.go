@@ -4,6 +4,8 @@ import (
 	"context"
 	"daiv/internal/plugin"
 	"fmt"
+
+	"github.com/andygrunwald/go-jira"
 )
 
 type JiraConfig struct {
@@ -16,6 +18,7 @@ type JiraConfig struct {
 type JiraPlugin struct {
 	client *JiraClient
 	config *JiraConfig
+	user   *jira.User
 }
 
 func NewJiraPlugin() (*JiraPlugin, error) {
@@ -80,6 +83,11 @@ func (j *JiraPlugin) Initialize(settings map[string]any) error {
 
 	j.client = client
 	j.config = config
+	j.user, err = j.client.GetSelf()
+
+	if err != nil {
+		return fmt.Errorf("failed to get Jira user: %w", err)
+	}
 
 	return nil
 }
