@@ -33,6 +33,8 @@ func NewJiraClient(config *JiraConfig) (*JiraClient, error) {
 
 func (j *JiraClient) GetActivityReport(ctx context.Context, timeRange plugin.TimeRange) (string, error) {
 	report := NewJiraReport()
+	report.TimeRange = timeRange
+
 	issues, err := j.fetchUpdatedIssues(timeRange)
 	if err != nil {
 		return "", err
