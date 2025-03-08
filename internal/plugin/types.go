@@ -27,6 +27,10 @@ type TimeRange struct {
 	End   time.Time
 }
 
+func (t *TimeRange) IsInRange(time time.Time) bool {
+	return time.After(t.Start) && time.Before(t.End)
+}
+
 // Report represents the output from a plugin
 type Report struct {
 	PluginName string

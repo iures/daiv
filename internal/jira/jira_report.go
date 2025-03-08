@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"daiv/internal/plugin"
 	"daiv/internal/utils"
 	"fmt"
 	"slices"
@@ -12,11 +13,13 @@ import (
 
 type JiraReport struct {
 	Issues []goJira.Issue
+	TimeRange plugin.TimeRange
 }
 
 func NewJiraReport() *JiraReport {
 	return &JiraReport{
-		Issues: []goJira.Issue{},
+		Issues:   []goJira.Issue{},
+		TimeRange: plugin.TimeRange{},
 	}
 }
 
@@ -86,14 +89,33 @@ func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue)
 	}
 }
 
+func filter[T any](slice []T, predicate func(T) bool) []T {
+	filtered := []T{}
+	for _, item := range slice {
+		if predicate(item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
 func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue) {
-	if issue.Changelog == nil || len(issue.Changelog.Histories) == 0 {
+	relevantHistories := filter(issue.Changelog.Histories, func(history goJira.ChangelogHistory) bool {
+		createdTime, err := time.Parse("2006-01-02T15:04:05.000-0700", history.Created)
+		if err != nil {
+			fmt.Fprintf(report, "Failed to parse created time for changelog history: %v\n", err)
+			return false
+		}
+		return r.TimeRange.IsInRange(createdTime)
+	})
+
+	if len(relevantHistories) == 0 {
 		return
 	}
 
 	fmt.Fprintln(report, "## Change Log:")
 
-	slices.SortFunc(issue.Changelog.Histories, func(a, b goJira.ChangelogHistory) int {
+	slices.SortFunc(relevantHistories, func(a, b goJira.ChangelogHistory) int {
 		aTime, err := time.Parse("2006-01-02T15:04:05.000-0700", a.Created)
 		if err != nil {
 			return 1
@@ -107,28 +129,26 @@ func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue
 		return aTime.Compare(bTime)
 	})
 
-	for _, history := range issue.Changelog.Histories {
-		layout := "2006-01-02T15:04:05.000-0700"
-		createdTime, err := time.Parse(layout, history.Created)
-		if err != nil {
-			fmt.Fprintf(report, "Failed to parse created time: %v\n", err)
-			continue
-		}
-
-		if !utils.IsDateTimeInThreshold(createdTime) {
-			continue
-		}
-
+	for _, history := range relevantHistories {
 		for _, item := range history.Items {
-			fmt.Fprintf(
-				report, "%s - %s changed: `%s` from: `%s` to: `%s`\n\n",
-				createdTime.Format("2006-01-02 15:04:05"),
-				history.Author.DisplayName,
-				item.Field,
-				item.FromString,
-				item.ToString,
-			)
+			r.renderChangelogItem(report, history, item)
 		}
 	}
 }
 
+func (r *JiraReport) renderChangelogItem(report *strings.Builder, history goJira.ChangelogHistory, item goJira.ChangelogItems) {
+	createdTime, err := time.Parse("2006-01-02T15:04:05.000-0700", history.Created)
+	if err != nil {
+		fmt.Fprintf(report, "Failed to parse created time: %v\n", err)
+		return
+	}
+
+	fmt.Fprintf(
+		report, "%s - %s changed: `%s` from: `%s` to: `%s`\n\n",
+		createdTime.Format("2006-01-02 15:04:05"),
+		history.Author.DisplayName,
+		item.Field,
+		item.FromString,
+		item.ToString,
+	)
+}
