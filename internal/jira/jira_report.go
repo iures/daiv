@@ -12,13 +12,14 @@ import (
 )
 
 type JiraReport struct {
-	Issues []goJira.Issue
+	Issues    []goJira.Issue
 	TimeRange plugin.TimeRange
+	User      *goJira.User
 }
 
 func NewJiraReport() *JiraReport {
 	return &JiraReport{
-		Issues:   []goJira.Issue{},
+		Issues:    []goJira.Issue{},
 		TimeRange: plugin.TimeRange{},
 	}
 }
@@ -89,10 +90,10 @@ func (r *JiraReport) renderComments(report *strings.Builder, issue goJira.Issue)
 	}
 }
 
-func filter[T any](slice []T, predicate func(T) bool) []T {
+func filter[T any](slice []T, condition func(T) bool) []T {
 	filtered := []T{}
 	for _, item := range slice {
-		if predicate(item) {
+		if condition(item) {
 			filtered = append(filtered, item)
 		}
 	}
@@ -106,7 +107,8 @@ func (r *JiraReport) renderChangelog(report *strings.Builder, issue goJira.Issue
 			fmt.Fprintf(report, "Failed to parse created time for changelog history: %v\n", err)
 			return false
 		}
-		return r.TimeRange.IsInRange(createdTime)
+
+		return r.TimeRange.IsInRange(createdTime) && history.Author.AccountID == r.User.AccountID
 	})
 
 	if len(relevantHistories) == 0 {
