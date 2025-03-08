@@ -47,7 +47,7 @@ func (j *JiraClient) fetchUpdatedIssues(timeRange plugin.TimeRange) ([]jira.Issu
 	toTime := timeRange.End.Format("2006-01-02")
 
 	searchString := fmt.Sprintf(
-		`assignee = currentUser() AND project = %s AND status != Closed AND sprint IN openSprints() AND updatedDate >= "%s" AND updatedDate <= "%s"`,
+		`assignee = currentUser() AND project = %s AND status != Closed AND sprint IN openSprints() AND (updatedDate >= %s AND updatedDate < %s)`,
 		j.config.Project,
 		fromTime,
 		toTime,
