@@ -26,21 +26,21 @@ func (g *GitHubPlugin) Manifest() *plugin.PluginManifest {
 		ConfigKeys: []plugin.ConfigKey{
 			{
 				Type:        plugin.ConfigTypeString,
-				Key:         "username",
+				Key:         "github.username",
 				Name:        "GitHub Username",
 				Description: "Your GitHub username",
 				Required:    true,
 			},
 			{
 				Type:        plugin.ConfigTypeString,
-				Key:         "organization",
+				Key:         "github.organization",
 				Name:        "GitHub Organization",
 				Description: "The GitHub organization to monitor",
 				Required:    true,
 			},
 			{
 				Type:        plugin.ConfigTypeMultiline,
-				Key:         "repositories",
+				Key:         "github.repositories",
 				Name:        "GitHub Repositories",
 				Description: "List of repositories to monitor",
 				Required:    true,
@@ -55,18 +55,14 @@ func (g *GitHubPlugin) Initialize(settings map[string]any) error {
 		return fmt.Errorf("failed to get gh cli token: %w", err)
 	}
 
-	repos := settings["repositories"].([]any)
-	var reposStr []string
-	for _, repo := range repos {
-		if str, ok := repo.(string); ok {
-			reposStr = append(reposStr, str)
-		}
-	}
-	username, ok := settings["username"].(string)
+	repos := settings["github.repositories"].(string)
+	reposStr := strings.Split(repos, ",")
+
+	username, ok := settings["github.username"].(string)
 	if !ok {
 		return fmt.Errorf("username is required")
 	}
-	org, ok := settings["organization"].(string)
+	org, ok := settings["github.organization"].(string)
 	if !ok {
 		return fmt.Errorf("organization is required")
 	}
