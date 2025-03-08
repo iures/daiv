@@ -4,6 +4,7 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
+	"daiv/internal/github"
 	"daiv/internal/jira"
 	"daiv/internal/plugin"
 	"errors"
@@ -94,12 +95,12 @@ func initConfig() {
 func registerPlugins() {
 	registry := plugin.GetRegistry()
 	
-	// githubPlugin := github.NewGitHubPlugin()
+	githubPlugin := github.NewGitHubPlugin()
 
-	// if err := registry.Register(githubPlugin); err != nil {
-	// 	slog.Error("Failed to register GitHub plugin", "error", err)
-	// 	os.Exit(1)
-	// }
+	if err := registry.Register(githubPlugin); err != nil {
+		slog.Error("Failed to register GitHub plugin", "error", err)
+		os.Exit(1)
+	}
 
 	jiraPlugin, err := jira.NewJiraPlugin()
 	if err != nil {
