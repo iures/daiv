@@ -21,8 +21,8 @@ type JiraPlugin struct {
 	user   *jira.User
 }
 
-func NewJiraPlugin() (*JiraPlugin, error) {
-	return &JiraPlugin{}, nil
+func NewJiraPlugin() *JiraPlugin {
+	return &JiraPlugin{}
 }
 
 func (j *JiraPlugin) Name() string {

@@ -3,7 +3,6 @@ package github
 import (
 	"context"
 	"daiv/internal/plugin"
-	"daiv/internal/utils"
 	"fmt"
 	"slices"
 	"strings"
@@ -39,7 +38,7 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 			
 			var hasReviewsInPeriod bool
 			for _, issue := range issuesReviewed {
-				reviewReport, err := gc.renderReviews(repo, issue)
+				reviewReport, err := gc.renderReviews(repo, issue, timeRange)
 				if err != nil {
 					return "", fmt.Errorf("error fetching reviews for PR #%d in %s/%s: %v", issue.GetNumber(), gc.settings.Org, repo, err)
 				}
@@ -48,7 +47,7 @@ func (gc *GithubClient) GetStandupContext(timeRange plugin.TimeRange) (string, e
 					fmt.Fprintln(repoSection, formatPullRequestFromIssue(issue))
 					repoSection.WriteString(reviewReport)
 
-					reviewCommentReport, err := gc.renderPrComments(repo, issue.GetNumber())
+					reviewCommentReport, err := gc.renderPrComments(repo, issue.GetNumber(), timeRange)
 					if err != nil {
 						return "", fmt.Errorf("error fetching comments for PR #%d in %s/%s: %v", issue.GetNumber(), gc.settings.Org, repo, err)
 					}
@@ -86,7 +85,7 @@ func (gc *GithubClient) renderAuthoredPullRequestCommits(repo string, timeRange 
 		for _, issue := range issues {
 			report.WriteString(formatPullRequestFromIssue(issue))
 
-			commitsReport, err := gc.renderCommits(repo, issue.GetNumber())
+			commitsReport, err := gc.renderCommits(repo, issue.GetNumber(), timeRange)
 			if err != nil {
 				return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), gc.settings.Org, repo, err)
 			}
@@ -108,7 +107,7 @@ func (gc *GithubClient) renderReviewedPullRequestCommits(repo string, timeRange 
 	for _, issue := range issues {
 		report.WriteString(formatPullRequestFromIssue(issue))
 
-		commitsReport, err := gc.renderCommits(repo, issue.GetNumber())
+		commitsReport, err := gc.renderCommits(repo, issue.GetNumber(), timeRange)
 		if err != nil {
 			return "", fmt.Errorf("error fetching commits for PR #%d in %s/%s: %v", issue.GetNumber(), gc.settings.Org, repo, err)
 		}
@@ -169,7 +168,7 @@ func (gc *GithubClient) searchReviewedPullRequests(repo string, timeRange plugin
 	return result.Issues, nil
 }
 
-func (gc *GithubClient) renderCommits(repo string, prNumber int) (string, error) {
+func (gc *GithubClient) renderCommits(repo string, prNumber int, timeRange plugin.TimeRange) (string, error) {
 	ctx := context.Background()
 
 	prCommits, _, err := gc.client.PullRequests.ListCommits(ctx, gc.settings.Org, repo, prNumber, nil)
@@ -182,7 +181,7 @@ func (gc *GithubClient) renderCommits(repo string, prNumber int) (string, error)
 	})
 
 	var commitReport strings.Builder
-	relevantCommits := filterRelevantCommits(prCommits, gc.settings.Username)
+	relevantCommits := filterRelevantCommits(prCommits, gc.settings.Username, timeRange)
 	if len(relevantCommits) > 0 {
 		commitReport.WriteString("#### Commits:\n")
 		for _, commit := range relevantCommits {
@@ -193,7 +192,7 @@ func (gc *GithubClient) renderCommits(repo string, prNumber int) (string, error)
 	return commitReport.String(), nil
 }
 
-func (gc *GithubClient) renderPrComments(repo string, prNumber int) (string, error) {
+func (gc *GithubClient) renderPrComments(repo string, prNumber int, timeRange plugin.TimeRange) (string, error) {
 	ctx := context.Background()
 
 	comments, _, err := gc.client.PullRequests.ListComments(ctx, gc.settings.Org, repo, prNumber, nil)
@@ -202,7 +201,7 @@ func (gc *GithubClient) renderPrComments(repo string, prNumber int) (string, err
 	}
 
 	var commentReport strings.Builder
-	relevantComments := filterRelevantPRComments(comments, gc.settings.Username)
+	relevantComments := filterRelevantPRComments(comments, gc.settings.Username, timeRange)
 	if len(relevantComments) > 0 {
 		commentReport.WriteString("### Comments:\n")
 		for _, comment := range relevantComments {
@@ -213,22 +212,22 @@ func (gc *GithubClient) renderPrComments(repo string, prNumber int) (string, err
 	return commentReport.String(), nil
 }
 
-func filterRelevantPRComments(comments []*externalGithub.PullRequestComment, username string) []*externalGithub.PullRequestComment {
+func filterRelevantPRComments(comments []*externalGithub.PullRequestComment, username string, timeRange plugin.TimeRange) []*externalGithub.PullRequestComment {
 	var relevant []*externalGithub.PullRequestComment
 	for _, comment := range comments {
 		if comment.User != nil && comment.User.GetLogin() == username &&
-			utils.IsDateTimeInThreshold(comment.GetCreatedAt().Time) {
+			timeRange.IsInRange(comment.GetCreatedAt().Time) {
 			relevant = append(relevant, comment)
 		}
 	}
 	return relevant
 }
 
-func filterRelevantCommits(commits []*externalGithub.RepositoryCommit, username string) []*externalGithub.RepositoryCommit {
+func filterRelevantCommits(commits []*externalGithub.RepositoryCommit, username string, timeRange plugin.TimeRange) []*externalGithub.RepositoryCommit {
 	var relevant []*externalGithub.RepositoryCommit
 	for _, commit := range commits {
 		if commit.Author != nil && commit.Author.GetLogin() == username &&
-			utils.IsDateTimeInThreshold(commit.GetCommit().GetCommitter().GetDate().Time) {
+			timeRange.IsInRange(commit.GetCommit().GetCommitter().GetDate().Time) {
 			relevant = append(relevant, commit)
 		}
 	}
@@ -259,7 +258,7 @@ func formatComment(comment *externalGithub.PullRequestComment) string {
 	)
 }
 
-func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue) (string, error) {
+func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue, timeRange plugin.TimeRange) (string, error) {
 	ctx := context.Background()
 
 	reviews, _, err := gc.client.PullRequests.ListReviews(ctx, gc.settings.Org, repo, issue.GetNumber(), nil)
@@ -273,7 +272,7 @@ func (gc *GithubClient) renderReviews(repo string, issue *externalGithub.Issue) 
 	// First collect all relevant reviews
 	for _, review := range reviews {
 		if review.User != nil && review.User.GetLogin() == gc.settings.Username  {
-			if review.GetSubmittedAt().IsZero() || !utils.IsDateTimeInThreshold(review.GetSubmittedAt().Time) {
+			if review.GetSubmittedAt().IsZero() || !timeRange.IsInRange(review.GetSubmittedAt().Time) {
 				continue
 			}
 			relevantReviews = append(relevantReviews, review)

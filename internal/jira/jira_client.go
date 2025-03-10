@@ -4,7 +4,6 @@ import (
 	"context"
 	"daiv/internal/plugin"
 	"fmt"
-	"log/slog"
 
 	jira "github.com/andygrunwald/go-jira"
 )
@@ -67,8 +66,6 @@ func (j *JiraClient) fetchUpdatedIssues(timeRange plugin.TimeRange) ([]jira.Issu
 		fromTime,
 		toTime,
 	)
-
-	slog.Info("Search string", "searchString", searchString)
 
 	opt := &jira.SearchOptions{
 		MaxResults: 100,
