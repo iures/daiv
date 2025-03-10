@@ -2,7 +2,7 @@ package jira
 
 import (
 	"context"
-	"daiv/internal/plugin"
+	"daiv/pkg/plugin"
 	"fmt"
 
 	"github.com/andygrunwald/go-jira"

@@ -1,7 +1,7 @@
 package jira
 
 import (
-	"daiv/internal/plugin"
+	"daiv/pkg/plugin"
 	"encoding/xml"
 	"fmt"
 	"slices"

@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -50,6 +52,52 @@ func (r *Registry) Register(plugin Plugin) error {
 	}
 
   r.Plugins[name] = plugin
+
+	return nil
+}
+
+// LoadExternalPlugins loads plugins from the plugins directory
+func (r *Registry) LoadExternalPlugins() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Get plugins directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	pluginsDir := filepath.Join(homeDir, ".daiv", "plugins")
+	
+	// Create plugin manager
+	manager, err := NewPluginManager(pluginsDir)
+	if err != nil {
+		return fmt.Errorf("failed to create plugin manager: %w", err)
+	}
+
+	// Load plugins
+	loadedPlugins, err := manager.LoadPlugins()
+	if err != nil {
+		return fmt.Errorf("failed to load external plugins: %w", err)
+	}
+
+	// Register loaded plugins
+	for _, plugin := range loadedPlugins {
+		name := plugin.Name()
+		if _, exists := r.Plugins[name]; exists {
+			fmt.Printf("Warning: Plugin %s is already registered, skipping external version\n", name)
+			continue
+		}
+
+		// Initialize the plugin
+		if err := Initialize(plugin); err != nil {
+			fmt.Printf("Warning: Failed to initialize plugin %s: %v\n", name, err)
+			continue
+		}
+
+		r.Plugins[name] = plugin
+		fmt.Printf("Loaded external plugin: %s\n", name)
+	}
 
 	return nil
 }

@@ -1,7 +1,7 @@
 package worklog
 
 import (
-	"daiv/internal/plugin"
+	"daiv/pkg/plugin"
 	"fmt"
 	"os"
 	"path/filepath"

@@ -1,7 +1,7 @@
 package github
 
 import (
-	"daiv/internal/plugin"
+	"daiv/pkg/plugin"
 	"fmt"
 	"os/exec"
 	"strings"
