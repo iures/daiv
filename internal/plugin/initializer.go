@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"daiv/internal/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,7 +45,7 @@ func saveChanges(changedConfigKeys []ConfigKey) error {
 		return nil
 	}
 
-	cacheDir, err := utils.GetCacheDir()
+	cacheDir, err := getCacheDir()
 	if err != nil {
 		return err
 	}
@@ -224,4 +223,17 @@ func getConfigParams(configKeys []ConfigKey) map[string]any {
 	}
 
 	return configParams
+}
+
+func getCacheDir() (string, error) {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	daivDir := filepath.Join(cacheDir, "daiv")
+	if err := os.MkdirAll(daivDir, 0755); err != nil {
+		return "", err
+	}
+	return daivDir, nil
 }

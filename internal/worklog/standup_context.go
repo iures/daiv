@@ -1,38 +1,33 @@
-package standup
+package worklog
 
 import (
-	"daiv/internal/utils"
+	"daiv/internal/plugin"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
-type WorkItem struct {
-	Contents    string
-	Timestamp   time.Time
-	Tags        []string
-}
-
-type WorklogReport struct {
+type StandupContext struct {
 	worklogPath string
+	Content string
+	timeRange plugin.TimeRange
 }
 
-func NewWorklogReport() *WorklogReport {
-	return &WorklogReport{
-		worklogPath: viper.GetString("worklog.path"),
+func NewStandupContext(worklogPath string, timeRange plugin.TimeRange) *StandupContext {
+	return &StandupContext{
+		worklogPath: worklogPath,
+		timeRange:   timeRange,
 	}
 }
 
-func (w *WorklogReport) Render() (string, error) {
-	if w.worklogPath == "" {
+func (s *StandupContext) Render() (string, error) {
+	if s.worklogPath == "" {
 		return "", nil
 	}
 
-	items, err := w.loadWorkItems()
+	items, err := s.fetchWorkItems()
 	if err != nil {
 		return "", fmt.Errorf("error loading worklog: %v", err)
 	}
@@ -40,7 +35,7 @@ func (w *WorklogReport) Render() (string, error) {
 	var report strings.Builder
 
 	for _, item := range items {
-		if utils.IsDateTimeInThreshold(item.Timestamp) {
+		if s.timeRange.IsInRange(item.Timestamp) {
 			tagStr := ""
 			if len(item.Tags) > 0 {
 				tagStr = fmt.Sprintf(" [%s]", strings.Join(item.Tags, ", "))
@@ -55,17 +50,22 @@ func (w *WorklogReport) Render() (string, error) {
 	return report.String(), nil
 }
 
-func (w *WorklogReport) loadWorkItems() ([]WorkItem, error) {
+type WorkItem struct {
+	Contents    string
+	Timestamp   time.Time
+	Tags        []string
+}
+
+
+func (s *StandupContext) fetchWorkItems() ([]WorkItem, error) {
 	var items []WorkItem
 
-	dir := filepath.Dir(w.worklogPath)
+	dir := filepath.Dir(s.worklogPath)
 
 	files, err := filepath.Glob(filepath.Join(dir, "*"))
 	if err != nil {
 		return nil, fmt.Errorf("error getting files: %v", err)
 	}
-
-	threshold := time.Now().AddDate(0, 0, -1)
 
 	for _, filePath := range files {
 		info, err := os.Stat(filePath)
@@ -73,7 +73,7 @@ func (w *WorklogReport) loadWorkItems() ([]WorkItem, error) {
 			continue // Skip files which we cannot stat.
 		}
 
-		if info.ModTime().After(threshold) || info.ModTime().Equal(threshold) {
+		if s.timeRange.IsInRange(info.ModTime()) {
 			contents, err := os.ReadFile(filePath)
 			if err != nil {
 				continue

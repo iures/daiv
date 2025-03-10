@@ -112,7 +112,9 @@ func runStandup() error {
 
 	var standupContexts []string
 	for report := range reportChan {
-		standupContexts = append(standupContexts, report)
+		if report != "" {	
+			standupContexts = append(standupContexts, report)
+		}
 	}
 
 	for err := range errChan {
@@ -123,21 +125,20 @@ func runStandup() error {
 	}
 
 	prompt := fmt.Sprintf(`
-		Generate a standup report for the current day based on. 
-		Just respond with the report and nothing else.
-		Make sure to include the correct Jira ticket number if available. (e.g. [PBR-1234])
-		It should follow the following format:
-		## Yesterday:
-		- xxx
-		- yyy
+Generate a standup report for the current day based on. 
+Just respond with the report and nothing else.
+Make sure to include the correct Jira ticket number if available. (e.g. [PBR-1234])
+It should follow the following format:
+## Yesterday:
+- xxx
+- yyy
 
-		## Today:
-		- xxx
-		- yyy
+## Today:
+- xxx
+- yyy
 
-		Here is the context for the report:
-		%s
-	`,
+Here is the context for the report:
+%s`,
 		strings.Join(standupContexts, "\n\n"),
 	)
 

@@ -2,7 +2,6 @@ package jira
 
 import (
 	"daiv/internal/plugin"
-	"daiv/internal/utils"
 	"encoding/xml"
 	"fmt"
 	"slices"
@@ -97,7 +96,7 @@ func (r *JiraReport) Render() (string, error) {
 					continue
 				}
 
-				if utils.IsDateTimeInThreshold(createdTime) {
+				if r.TimeRange.IsInRange(createdTime) {
 					comments = append(comments, XMLComment{
 						Timestamp: createdTime.Format("2006-01-02 15:04:05"),
 						Author:    comment.Author.DisplayName,

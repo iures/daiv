@@ -78,6 +78,10 @@ type StandupContext struct {
 }
 
 func (s *StandupContext) String() string {
+	if s.Content == "" {
+		return ""
+	}
+
 	return fmt.Sprintf(
 		"\n\n<%s>\n%s\n</%s>\n\n",
 		s.PluginName,
