@@ -2,7 +2,7 @@ package github
 
 import (
 	"context"
-	"daiv/internal/plugin"
+	"daiv/pkg/plugin"
 	"fmt"
 	"slices"
 	"strings"

@@ -6,8 +6,8 @@ package cmd
 import (
 	"daiv/internal/github"
 	"daiv/internal/jira"
-	"daiv/internal/plugin"
 	"daiv/internal/worklog"
+	"daiv/pkg/plugin"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -90,6 +90,19 @@ func initConfig() {
 		os.Exit(1)
 	}
 
+	// Ensure plugins directory exists
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("Error getting home directory:", err)
+		os.Exit(1)
+	}
+	
+	pluginsDir := filepath.Join(homeDir, ".daiv", "plugins")
+	if err := os.MkdirAll(pluginsDir, 0755); err != nil {
+		fmt.Printf("Error creating plugins directory: %v\n", err)
+		// Don't exit on error
+	}
+
 	registerPlugins()
 }
 
@@ -112,6 +125,12 @@ func registerPlugins() {
 	if err := registry.Register(worklogPlugin); err != nil {
 		slog.Error("Failed to register Worklog plugin", "error", err)
 		os.Exit(1)
+	}
+	
+	// Load external plugins
+	if err := registry.LoadExternalPlugins(); err != nil {
+		slog.Error("Failed to load external plugins", "error", err)
+		// Don't exit on error, just log it
 	}
 }
 
