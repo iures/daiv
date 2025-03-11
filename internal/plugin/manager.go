@@ -7,8 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"plugin"
 	pluginlib "plugin" // Go standard library plugin
 	"strings"
+
+	extPlugin "github.com/iures/daiv-plugin"
 )
 
 // PluginManager handles downloading, installing, and loading plugins
@@ -151,8 +154,8 @@ func (pm *PluginManager) InstallFromLocalFile(filePath string) error {
 }
 
 // LoadPlugins loads all plugins from the plugins directory
-func (pm *PluginManager) LoadPlugins() ([]Plugin, error) {
-	var plugins []Plugin
+func (pm *PluginManager) LoadPlugins() ([]extPlugin.Plugin, error) {
+	var plugins []extPlugin.Plugin
 	
 	// Ensure directory exists
 	if _, err := os.Stat(pm.pluginsDir); os.IsNotExist(err) {
@@ -184,24 +187,33 @@ func (pm *PluginManager) LoadPlugins() ([]Plugin, error) {
 		}
 		
 		// Look up the Plugin symbol
-		symPlugin, err := p.Lookup("Plugin")
+		plug, err := lookUpSymbol[extPlugin.Plugin](p, "Plugin")
 		if err != nil {
 			fmt.Printf("Warning: Plugin %s does not export 'Plugin' symbol: %v\n", name, err)
 			continue
 		}
 		
-		// Cast to the Plugin interface
-		plug, ok := symPlugin.(Plugin)
-		if !ok {
-			fmt.Printf("Warning: Plugin %s's exported 'Plugin' is not of type Plugin\n", name)
-			continue
-		}
-		
 		// Add to the list of plugins
-		plugins = append(plugins, plug)
+		plugins = append(plugins, *plug)
 	}
 	
 	return plugins, nil
+}
+
+func lookUpSymbol[M any](plugin *plugin.Plugin, symbolName string) (*M, error) {
+	symbol, err := plugin.Lookup(symbolName)
+	if err != nil {
+		return nil, err
+	}
+	switch symbol.(type) {
+	case *M:
+		return symbol.(*M), nil
+	case M:
+		result := symbol.(M)
+		return &result, nil
+	default:
+		return nil, fmt.Errorf("unexpected type from module symbol: %T", symbol)
+	}
 }
 
 // Helper function to copy a file
@@ -223,4 +235,4 @@ func copyFile(src, dst string) error {
 	}
 	
 	return nil
-} 
+}

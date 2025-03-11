@@ -1,52 +1,17 @@
 package main
 
 import (
-	"time"
+	extPlugin "github.com/iures/daiv-plugin"
 )
 
+// WorklogPlugin implements both plugin.Plugin and plugin.StandupPlugin interfaces
+type WorklogPlugin struct {
+	// Add any fields needed by the plugin here
+}
+
 // Plugin is exported as a symbol for the daiv plugin system to find
-var Plugin plugin = &WorklogPlugin{}
-
-// TimeRange represents a period for report generation
-type TimeRange struct {
-	Start time.Time
-	End   time.Time
-}
-
-// StandupContext represents the standup information
-type StandupContext struct {
-	PluginName string
-	Content    string
-}
-
-// ConfigKey represents configuration metadata
-type ConfigKey struct {
-	Type        int // Using int to represent ConfigType
-	Key         string
-	Value       interface{}
-	Name        string
-	Description string
-	Required    bool
-	Secret      bool
-	EnvVar      string
-}
-
-// PluginManifest represents plugin metadata
-type PluginManifest struct {
-	ConfigKeys []ConfigKey
-}
-
-// Plugin interface matches the one in daiv/pkg/plugin
-type plugin interface {
-	Name() string
-	Manifest() *PluginManifest
-	Initialize(map[string]interface{}) error
-	Shutdown() error
-	GetStandupContext(TimeRange) (StandupContext, error)
-}
-
-// WorklogPlugin implements the Plugin interface
-type WorklogPlugin struct{}
+// It must be of type plugin.Plugin for the plugin system to recognize it
+var Plugin extPlugin.Plugin = &WorklogPlugin{}
 
 // Name returns the unique identifier for this plugin
 func (p *WorklogPlugin) Name() string {
@@ -54,9 +19,9 @@ func (p *WorklogPlugin) Name() string {
 }
 
 // Manifest returns the plugin manifest
-func (p *WorklogPlugin) Manifest() *PluginManifest {
-	return &PluginManifest{
-		ConfigKeys: []ConfigKey{
+func (p *WorklogPlugin) Manifest() *extPlugin.PluginManifest {
+	return &extPlugin.PluginManifest{
+		ConfigKeys: []extPlugin.ConfigKey{
 			{
 				Type:        0, // ConfigTypeString
 				Key:         "worklog.path",
@@ -79,11 +44,11 @@ func (p *WorklogPlugin) Shutdown() error {
 }
 
 // GetStandupContext implements the StandupPlugin interface
-func (p *WorklogPlugin) GetStandupContext(timeRange TimeRange) (StandupContext, error) {
-	return StandupContext{
+func (p *WorklogPlugin) GetStandupContext(timeRange extPlugin.TimeRange) (extPlugin.StandupContext, error) {
+	return extPlugin.StandupContext{
 		PluginName: p.Name(),
 		Content:    "Example content from worklog plugin",
 	}, nil
 }
 
-func main() {} // Required for building as a plugin
+// func main() {} // Required for building as a plugin

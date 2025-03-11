@@ -4,7 +4,7 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
-	"daiv/pkg/plugin"
+	"daiv/internal/plugin"
 	"fmt"
 	"os"
 	"path/filepath"
