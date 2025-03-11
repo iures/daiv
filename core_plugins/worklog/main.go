@@ -50,5 +50,3 @@ func (p *WorklogPlugin) GetStandupContext(timeRange extPlugin.TimeRange) (extPlu
 		Content:    "Example content from worklog plugin",
 	}, nil
 }
-
-// func main() {} // Required for building as a plugin
