@@ -1,13 +1,12 @@
 module daiv
 
-go 1.22.0
-
-toolchain go1.22.11
+go 1.23.6
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/charmbracelet/huh v0.6.0
 	github.com/google/go-github/v68 v68.0.0
+	github.com/iures/daiv-plugin v0.0.0-20250311204859-94d9a5da519f
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0

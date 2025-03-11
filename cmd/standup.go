@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"daiv/internal/llm"
-	"daiv/pkg/plugin"
+	"daiv/internal/plugin"
 
+	extPlugin "github.com/iures/daiv-plugin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -79,7 +80,7 @@ func runStandup() error {
 		}
 	}()
 
-	timeRange := plugin.TimeRange{
+	timeRange := extPlugin.TimeRange{
 		Start: viper.GetTime("fromTime"),
 		End:   viper.GetTime("toTime"),
 	}
@@ -91,7 +92,7 @@ func runStandup() error {
 	var wg sync.WaitGroup
 	for _, reporter := range standupContextPlugins {
 		wg.Add(1)
-		go func(r plugin.StandupPlugin) {
+		go func(r extPlugin.StandupPlugin) {
 			defer wg.Done()
 			standupContext, err := r.GetStandupContext(timeRange)
 			if err != nil {

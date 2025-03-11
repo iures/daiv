@@ -4,14 +4,10 @@ Copyright © 2025 Iure Sales
 package cmd
 
 import (
-	"daiv/internal/github"
-	"daiv/internal/jira"
-	"daiv/internal/worklog"
-	"daiv/pkg/plugin"
+	"daiv/internal/plugin"
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -109,23 +105,23 @@ func initConfig() {
 func registerPlugins() {
 	registry := plugin.GetRegistry()
 	
-	githubPlugin := github.NewGitHubPlugin()
-	if err := registry.Register(githubPlugin); err != nil {
-		slog.Error("Failed to register GitHub plugin", "error", err)
-		os.Exit(1)
-	}
+	// githubPlugin := github.NewGitHubPlugin()
+	// if err := registry.Register(githubPlugin); err != nil {
+	// 	slog.Error("Failed to register GitHub plugin", "error", err)
+	// 	os.Exit(1)
+	// }
 
-	jiraPlugin := jira.NewJiraPlugin()
-	if err := registry.Register(jiraPlugin); err != nil {
-		slog.Error("Failed to register Jira plugin", "error", err)
-		os.Exit(1)
-	}
+	// jiraPlugin := jira.NewJiraPlugin()
+	// if err := registry.Register(jiraPlugin); err != nil {
+	// 	slog.Error("Failed to register Jira plugin", "error", err)
+	// 	os.Exit(1)
+	// }
 
-	worklogPlugin := worklog.NewWorklogPlugin()
-	if err := registry.Register(worklogPlugin); err != nil {
-		slog.Error("Failed to register Worklog plugin", "error", err)
-		os.Exit(1)
-	}
+	// worklogPlugin := worklog.NewWorklogPlugin()
+	// if err := registry.Register(worklogPlugin); err != nil {
+	// 	slog.Error("Failed to register Worklog plugin", "error", err)
+	// 	os.Exit(1)
+	// }
 	
 	// Load external plugins
 	if err := registry.LoadExternalPlugins(); err != nil {
