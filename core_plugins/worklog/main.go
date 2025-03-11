@@ -1,7 +1,7 @@
 package main
 
 import (
-	extPlugin "github.com/iures/daiv-plugin"
+	plug "github.com/iures/daivplug"
 )
 
 // WorklogPlugin implements both plugin.Plugin and plugin.StandupPlugin interfaces
@@ -11,7 +11,7 @@ type WorklogPlugin struct {
 
 // Plugin is exported as a symbol for the daiv plugin system to find
 // It must be of type plugin.Plugin for the plugin system to recognize it
-var Plugin extPlugin.Plugin = &WorklogPlugin{}
+var Plugin plug.Plugin = &WorklogPlugin{}
 
 // Name returns the unique identifier for this plugin
 func (p *WorklogPlugin) Name() string {
@@ -19,9 +19,9 @@ func (p *WorklogPlugin) Name() string {
 }
 
 // Manifest returns the plugin manifest
-func (p *WorklogPlugin) Manifest() *extPlugin.PluginManifest {
-	return &extPlugin.PluginManifest{
-		ConfigKeys: []extPlugin.ConfigKey{
+func (p *WorklogPlugin) Manifest() *plug.PluginManifest {
+	return &plug.PluginManifest{
+		ConfigKeys: []plug.ConfigKey{
 			{
 				Type:        0, // ConfigTypeString
 				Key:         "worklog.path",
@@ -44,8 +44,8 @@ func (p *WorklogPlugin) Shutdown() error {
 }
 
 // GetStandupContext implements the StandupPlugin interface
-func (p *WorklogPlugin) GetStandupContext(timeRange extPlugin.TimeRange) (extPlugin.StandupContext, error) {
-	return extPlugin.StandupContext{
+func (p *WorklogPlugin) GetStandupContext(timeRange plug.TimeRange) (plug.StandupContext, error) {
+	return plug.StandupContext{
 		PluginName: p.Name(),
 		Content:    "Example content from worklog plugin",
 	}, nil

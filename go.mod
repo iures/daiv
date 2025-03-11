@@ -6,11 +6,12 @@ require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/charmbracelet/huh v0.6.0
 	github.com/google/go-github/v68 v68.0.0
-	github.com/iures/daiv-plugin v0.0.0-20250311204859-94d9a5da519f
+	github.com/iures/daivplug v0.0.3
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/tmc/langchaingo v0.1.12
+	golang.org/x/text v0.22.0
 )
 
 require (
@@ -62,7 +63,6 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

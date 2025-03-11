@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	extPlugin "github.com/iures/daiv-plugin"
+	plug "github.com/iures/daivplug"
 	"github.com/spf13/viper"
 )
 
 // Initialize handles plugin initialization by ensuring all required config is present
-func Initialize(plugin extPlugin.Plugin) error {
+func Initialize(plugin plug.Plugin) error {
 	configKeys := plugin.Manifest().ConfigKeys
 	configParams := getConfigParams(configKeys)
 
@@ -41,7 +41,7 @@ func Initialize(plugin extPlugin.Plugin) error {
 }
 
 // saveChanges saves the changed configuration to the cache directory
-func saveChanges(changedConfigKeys []extPlugin.ConfigKey) error {
+func saveChanges(changedConfigKeys []plug.ConfigKey) error {
 	if len(changedConfigKeys) == 0 {
 		return nil
 	}
@@ -59,7 +59,7 @@ func saveChanges(changedConfigKeys []extPlugin.ConfigKey) error {
 	for _, key := range changedConfigKeys {
 		value := key.Value
 
-		if key.Type == extPlugin.ConfigTypeMultiline {
+		if key.Type == plug.ConfigTypeMultiline {
 			if value == nil {
 				value = []string{} // Handle nil value for multiline config
 			} else if strValue, ok := value.(string); ok {
@@ -81,7 +81,7 @@ func saveChanges(changedConfigKeys []extPlugin.ConfigKey) error {
 	return cacheConfig.WriteConfigAs(configPath)
 }
 
-func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
+func promptConfigKeys(missingConfigKeys []plug.ConfigKey) error {
 	var inputs []huh.Field
 	
 	// Create maps to store the values
@@ -91,7 +91,7 @@ func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
 
 	for _, key := range missingConfigKeys {
 		switch key.Type {
-		case extPlugin.ConfigTypeString:
+		case plug.ConfigTypeString:
 			var value string
 			if v, ok := key.Value.(string); ok && v != "" {
 				value = v
@@ -99,7 +99,7 @@ func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
 			stringValues[key.Key] = &value
 			inputs = append(inputs, createStringInput(key, &value))
 			
-		case extPlugin.ConfigTypeBoolean:
+		case plug.ConfigTypeBoolean:
 			var value bool
 			if v, ok := key.Value.(bool); ok {
 				value = v
@@ -107,7 +107,7 @@ func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
 			boolValues[key.Key] = &value
 			inputs = append(inputs, createBooleanInput(key, &value))
 			
-		case extPlugin.ConfigTypeMultiline:
+		case plug.ConfigTypeMultiline:
 			var value string
 			if v, ok := key.Value.([]string); ok && len(v) > 0 {
 				value = strings.Join(v, "\n")
@@ -135,15 +135,15 @@ func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
 		// Update the original ConfigKey values
 		for i, key := range missingConfigKeys {
 			switch key.Type {
-			case extPlugin.ConfigTypeString:
+			case plug.ConfigTypeString:
 				if value, ok := stringValues[key.Key]; ok && value != nil {
 					missingConfigKeys[i].Value = *value
 				}
-			case extPlugin.ConfigTypeBoolean:
+			case plug.ConfigTypeBoolean:
 				if value, ok := boolValues[key.Key]; ok && value != nil {
 					missingConfigKeys[i].Value = *value
 				}
-			case extPlugin.ConfigTypeMultiline:
+			case plug.ConfigTypeMultiline:
 				if value, ok := textValues[key.Key]; ok && value != nil {
 					// Convert the multiline string back to a string array
 					if *value != "" {
@@ -163,7 +163,7 @@ func promptConfigKeys(missingConfigKeys []extPlugin.ConfigKey) error {
 	return nil
 }
 
-func createStringInput(key extPlugin.ConfigKey, value *string) huh.Field {
+func createStringInput(key plug.ConfigKey, value *string) huh.Field {
 	input := huh.NewInput().
 		Key(key.Key).
 		Title(key.Name).
@@ -182,7 +182,7 @@ func createStringInput(key extPlugin.ConfigKey, value *string) huh.Field {
 	return input
 }
 
-func createBooleanInput(key extPlugin.ConfigKey, value *bool) huh.Field {
+func createBooleanInput(key plug.ConfigKey, value *bool) huh.Field {
 	return huh.NewConfirm().
 		Key(key.Key).
 		Title(key.Name).
@@ -190,7 +190,7 @@ func createBooleanInput(key extPlugin.ConfigKey, value *bool) huh.Field {
 		Value(value)
 }
 
-func createMultilineInput(key extPlugin.ConfigKey, value *string) huh.Field {
+func createMultilineInput(key plug.ConfigKey, value *string) huh.Field {
 	return huh.NewText().
 		Key(key.Key).
 		Title(key.Name).
@@ -200,8 +200,8 @@ func createMultilineInput(key extPlugin.ConfigKey, value *string) huh.Field {
 		ShowLineNumbers(true)
 }
 
-func missingConfigKeys(configKeys []extPlugin.ConfigKey, configParams map[string]interface{}) []extPlugin.ConfigKey {
-	missingKeys := []extPlugin.ConfigKey{}
+func missingConfigKeys(configKeys []plug.ConfigKey, configParams map[string]interface{}) []plug.ConfigKey {
+	missingKeys := []plug.ConfigKey{}
 
 	for _, key := range configKeys {
 		if _, ok := configParams[key.Key]; !ok && key.Required {
@@ -212,7 +212,7 @@ func missingConfigKeys(configKeys []extPlugin.ConfigKey, configParams map[string
 	return missingKeys
 }
 
-func getConfigParams(configKeys []extPlugin.ConfigKey) map[string]any {
+func getConfigParams(configKeys []plug.ConfigKey) map[string]any {
 	configParams := make(map[string]any)
 
 	for _, key := range configKeys {
