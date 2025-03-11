@@ -1,20 +1,20 @@
 package plugin
 
 import (
-	"daiv/pkg/plugin"
+	daivPlugin "github.com/iures/daiv/pkg/plugin"
 )
 
 // Name returns the unique identifier for this plugin
-func (p *Plugin) Name() string {
+func (p *daivPlugin.Plugin) Name() string {
 	return "worklog"
 }
 
 // Manifest returns the plugin manifest
-func (p *Plugin) Manifest() *plugin.PluginManifest {
-	return &plugin.PluginManifest{
-		ConfigKeys: []plugin.ConfigKey{
+func (p *daivPlugin.Plugin) Manifest() *daivPlugin.PluginManifest {
+	return &daivPlugin.PluginManifest{
+		ConfigKeys: []daivPlugin.ConfigKey{
 			{
-				Type:        plugin.ConfigTypeString,
+				Type:        daivPlugin.ConfigTypeString,
 				Key:         "worklog.apikey",
 				Name:        "API Key",
 				Description: "API key for the service",
@@ -26,7 +26,7 @@ func (p *Plugin) Manifest() *plugin.PluginManifest {
 }
 
 // Initialize sets up the plugin with its configuration
-func (p *Plugin) Initialize(settings map[string]interface{}) error {
+func (p *daivPlugin.Plugin) Initialize(settings map[string]interface{}) error {
 	// Process configuration settings
 	// apiKey := settings["worklog.apikey"].(string)
 	// TODO: Initialize your plugin with the settings
@@ -34,15 +34,15 @@ func (p *Plugin) Initialize(settings map[string]interface{}) error {
 }
 
 // Shutdown performs cleanup when the plugin is being disabled/removed
-func (p *Plugin) Shutdown() error {
+func (p *daivPlugin.Plugin) Shutdown() error {
 	// TODO: Clean up any resources
 	return nil
 }
 
 // GetStandupContext implements the StandupPlugin interface
-func (p *Plugin) GetStandupContext(timeRange plugin.TimeRange) (plugin.StandupContext, error) {
+func (p *daivPlugin.Plugin) GetStandupContext(timeRange daivPlugin.TimeRange) (daivPlugin.StandupContext, error) {
 	// TODO: Implement your plugin-specific standup context generation
-	return plugin.StandupContext{
+	return daivPlugin.StandupContext{
 		PluginName: p.Name(),
 		Content:    "Example content from worklog plugin",
 	}, nil

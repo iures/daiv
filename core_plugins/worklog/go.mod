@@ -6,7 +6,7 @@ toolchain go1.23.6
 
 require github.com/iures/daiv v0.0.0
 
-replace github.com/iures/daiv => ../
+replace github.com/iures/daiv => /Users/ure/src/iures/daiv
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect

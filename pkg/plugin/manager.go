@@ -98,22 +98,55 @@ func (pm *PluginManager) InstallFromURL(url string) error {
 	defer resp.Body.Close()
 	
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download plugin, status: %s", resp.Status)
+		return fmt.Errorf("failed to download plugin: HTTP status %d", resp.StatusCode)
 	}
 	
 	// Create the destination file
 	destPath := filepath.Join(pm.pluginsDir, filename)
-	dest, err := os.Create(destPath)
+	destFile, err := os.Create(destPath)
 	if err != nil {
-		return fmt.Errorf("failed to create plugin file: %w", err)
+		return fmt.Errorf("failed to create destination file: %w", err)
 	}
-	defer dest.Close()
+	defer destFile.Close()
 	
-	// Copy the content
-	if _, err = io.Copy(dest, resp.Body); err != nil {
+	// Copy the downloaded content to the destination file
+	if _, err := io.Copy(destFile, resp.Body); err != nil {
 		return fmt.Errorf("failed to save plugin file: %w", err)
 	}
 	
+	fmt.Printf("Plugin installed to: %s\n", destPath)
+	return nil
+}
+
+// InstallFromLocalFile copies a local plugin file to the plugins directory
+func (pm *PluginManager) InstallFromLocalFile(filePath string) error {
+	// Verify the file exists
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to access plugin file: %w", err)
+	}
+	
+	if fileInfo.IsDir() {
+		return fmt.Errorf("expected a file, got a directory")
+	}
+	
+	// Check file extension
+	if !strings.HasSuffix(filePath, ".so") && !strings.HasSuffix(filePath, ".dll") {
+		return fmt.Errorf("plugin file must have .so or .dll extension")
+	}
+	
+	// Get the filename
+	filename := filepath.Base(filePath)
+	
+	// Create the destination path
+	destPath := filepath.Join(pm.pluginsDir, filename)
+	
+	// Copy the file
+	if err := copyFile(filePath, destPath); err != nil {
+		return fmt.Errorf("failed to copy plugin file: %w", err)
+	}
+	
+	fmt.Printf("Plugin installed to: %s\n", destPath)
 	return nil
 }
 
