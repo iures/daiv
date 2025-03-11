@@ -1,13 +1,13 @@
 package jira
 
 import (
-	"daiv/pkg/plugin"
 	"encoding/xml"
 	"fmt"
 	"slices"
 	"time"
 
 	goJira "github.com/andygrunwald/go-jira"
+	plugin "github.com/iures/daivplug"
 )
 
 // XML structures for proper marshaling

@@ -2,10 +2,10 @@ package jira
 
 import (
 	"context"
-	"daiv/pkg/plugin"
 	"fmt"
 
 	jira "github.com/andygrunwald/go-jira"
+	plugin "github.com/iures/daivplug"
 )
 
 type JiraClient struct {

@@ -11,7 +11,7 @@ import (
 	pluginlib "plugin" // Go standard library plugin
 	"strings"
 
-	extPlugin "github.com/iures/daiv-plugin"
+	plug "github.com/iures/daivplug"
 )
 
 // PluginManager handles downloading, installing, and loading plugins
@@ -42,7 +42,7 @@ func (pm *PluginManager) InstallFromGitHub(repo string, version string) error {
 	username, repoName := parts[0], parts[1]
 	
 	// Create temp directory for cloning
-	tempDir, err := os.MkdirTemp("", "daiv-plugin-*")
+	tempDir, err := os.MkdirTemp("", "daivplug-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -154,8 +154,8 @@ func (pm *PluginManager) InstallFromLocalFile(filePath string) error {
 }
 
 // LoadPlugins loads all plugins from the plugins directory
-func (pm *PluginManager) LoadPlugins() ([]extPlugin.Plugin, error) {
-	var plugins []extPlugin.Plugin
+func (pm *PluginManager) LoadPlugins() ([]plug.Plugin, error) {
+	var plugins []plug.Plugin
 	
 	// Ensure directory exists
 	if _, err := os.Stat(pm.pluginsDir); os.IsNotExist(err) {
@@ -187,7 +187,7 @@ func (pm *PluginManager) LoadPlugins() ([]extPlugin.Plugin, error) {
 		}
 		
 		// Look up the Plugin symbol
-		plug, err := lookUpSymbol[extPlugin.Plugin](p, "Plugin")
+		plug, err := lookUpSymbol[plug.Plugin](p, "Plugin")
 		if err != nil {
 			fmt.Printf("Warning: Plugin %s does not export 'Plugin' symbol: %v\n", name, err)
 			continue

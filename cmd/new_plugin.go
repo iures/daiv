@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 Iure Sales
-*/
 package cmd
 
 import (
@@ -11,6 +8,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var createPluginCmd = &cobra.Command{
@@ -25,6 +24,11 @@ Example:
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pluginName := args[0]
+		titleCaser := cases.Title(language.English)
+		
+		// Create a valid Go identifier from the plugin name
+		goIdent := strings.ReplaceAll(pluginName, "-", "")
+		goIdent = titleCaser.String(goIdent)
 		
 		// Prompt for GitHub username using huh
 		var githubUsername string
@@ -58,12 +62,10 @@ Example:
 
 go 1.21
 
-require (
-	github.com/iures/daiv v0.1.0
-)
+require github.com/iures/daivplug v0.0.1
 
 // For local development, uncomment and update the path to your local daiv repository:
-// replace github.com/iures/daiv => /absolute/path/to/local/daiv
+// replace github.com/iures/daivplug => /absolute/path/to/local/daiv
 `, githubUsername, pluginName)
 
 		if err := os.WriteFile(filepath.Join(pluginName, "go.mod"), []byte(goModContent), 0644); err != nil {
@@ -74,46 +76,28 @@ require (
 		mainContent := fmt.Sprintf(`package main
 
 import (
-	"github.com/%s/%s/plugin"
+	plug "github.com/iures/daivplug"
 )
+
+// %sPlugin implements the Plugin interface
+type %sPlugin struct{
+	// Add any fields needed by the plugin here
+}
 
 // Plugin is exported as a symbol for the daiv plugin system to find
-var Plugin plugin.MyPlugin
-
-func main() {} // Required for building as a plugin
-`, githubUsername, pluginName)
-
-		if err := os.WriteFile(filepath.Join(pluginName, "main.go"), []byte(mainContent), 0644); err != nil {
-			return fmt.Errorf("failed to create main.go file: %w", err)
-		}
-		
-		// Create plugin directory
-		pluginDir := filepath.Join(pluginName, "plugin")
-		if err := os.Mkdir(pluginDir, 0755); err != nil {
-			return fmt.Errorf("failed to create plugin directory: %w", err)
-		}
-		
-		// Create plugin implementation file
-		pluginImplContent := fmt.Sprintf(`package plugin
-
-import (
-	"github.com/iures/daiv/pkg/plugin"
-)
-
-// MyPlugin implements the Plugin interface
-type MyPlugin struct{}
+var Plugin plug.Plugin = &%sPlugin{}
 
 // Name returns the unique identifier for this plugin
-func (p *MyPlugin) Name() string {
+func (p *%sPlugin) Name() string {
 	return "%s"
 }
 
 // Manifest returns the plugin manifest
-func (p *MyPlugin) Manifest() *plugin.PluginManifest {
-	return &plugin.PluginManifest{
-		ConfigKeys: []plugin.ConfigKey{
+func (p *%sPlugin) Manifest() *plug.PluginManifest {
+	return &plug.PluginManifest{
+		ConfigKeys: []plug.ConfigKey{
 			{
-				Type:        plugin.ConfigTypeString,
+				Type:        0, // ConfigTypeString
 				Key:         "%s.apikey",
 				Name:        "API Key",
 				Description: "API key for the service",
@@ -125,7 +109,7 @@ func (p *MyPlugin) Manifest() *plugin.PluginManifest {
 }
 
 // Initialize sets up the plugin with its configuration
-func (p *MyPlugin) Initialize(settings map[string]interface{}) error {
+func (p *%sPlugin) Initialize(settings map[string]interface{}) error {
 	// Process configuration settings
 	// apiKey := settings["%s.apikey"].(string)
 	// TODO: Initialize your plugin with the settings
@@ -133,23 +117,35 @@ func (p *MyPlugin) Initialize(settings map[string]interface{}) error {
 }
 
 // Shutdown performs cleanup when the plugin is being disabled/removed
-func (p *MyPlugin) Shutdown() error {
+func (p *%sPlugin) Shutdown() error {
 	// TODO: Clean up any resources
 	return nil
 }
 
 // GetStandupContext implements the StandupPlugin interface
-func (p *MyPlugin) GetStandupContext(timeRange plugin.TimeRange) (plugin.StandupContext, error) {
+func (p *%sPlugin) GetStandupContext(timeRange plug.TimeRange) (plug.StandupContext, error) {
 	// TODO: Implement your plugin-specific standup context generation
-	return plugin.StandupContext{
+	return plug.StandupContext{
 		PluginName: p.Name(),
 		Content:    "Example content from %s plugin",
 	}, nil
 }
-`, pluginName, pluginName, pluginName, pluginName)
+`, 
+			goIdent, 
+			goIdent,
+			goIdent,
+			goIdent,
+			pluginName, 
+			goIdent,
+			pluginName,
+			goIdent,
+			pluginName,
+			goIdent,
+			goIdent,
+			pluginName)
 
-		if err := os.WriteFile(filepath.Join(pluginDir, "plugin.go"), []byte(pluginImplContent), 0644); err != nil {
-			return fmt.Errorf("failed to create plugin implementation file: %w", err)
+		if err := os.WriteFile(filepath.Join(pluginName, "main.go"), []byte(mainContent), 0644); err != nil {
+			return fmt.Errorf("failed to create main.go file: %w", err)
 		}
 		
 		// Create README.md
@@ -158,6 +154,12 @@ func (p *MyPlugin) GetStandupContext(timeRange plugin.TimeRange) (plugin.Standup
 A plugin for the daiv CLI tool.
 
 ## Installation
+
+### From GitHub
+
+` + "```" + `
+daiv plugin install %s/%s
+` + "```" + `
 
 ### From Source
 
@@ -169,19 +171,13 @@ A plugin for the daiv CLI tool.
 
 2. Build the plugin:
    ` + "```" + `
-   go build -buildmode=plugin -o %s.so
+   go build -o out/%s.so -buildmode=plugin
    ` + "```" + `
 
 3. Install the plugin:
    ` + "```" + `
-   daiv plugin install /path/to/%s.so
+   daiv plugin install ./out/%s.so
    ` + "```" + `
-
-### From GitHub
-
-` + "```" + `
-daiv plugin install %s/%s
-` + "```" + `
 
 ## Configuration
 
@@ -195,20 +191,14 @@ You can configure these settings when you first run daiv after installing the pl
 
 After installation, the plugin will be automatically loaded when you start daiv.
 
-## Development
-
-1. Fork this repository
-2. Make your changes
-3. Build and test locally
-4. Submit a pull request
 `, 
-			strings.Title(pluginName), 
+			titleCaser.String(strings.ReplaceAll(pluginName, "-", " ")), 
 			githubUsername, 
 			pluginName, 
-			pluginName, 
-			pluginName, 
-			pluginName, 
 			githubUsername,
+			pluginName,
+			pluginName,
+			pluginName,
 			pluginName,
 			pluginName)
 
@@ -216,11 +206,17 @@ After installation, the plugin will be automatically loaded when you start daiv.
 			return fmt.Errorf("failed to create README.md file: %w", err)
 		}
 		
+		// Create output directory
+		outDir := filepath.Join(pluginName, "out")
+		if err := os.Mkdir(outDir, 0755); err != nil {
+			return fmt.Errorf("failed to create out directory: %w", err)
+		}
+		
 		fmt.Printf("Successfully generated plugin template in ./%s\n", pluginName)
 		fmt.Println("\nNext steps:")
-		fmt.Println("1. Implement your plugin functionality in 'plugin/plugin.go'")
-		fmt.Println("2. Build your plugin with: go build -buildmode=plugin -o " + pluginName + ".so")
-		fmt.Println("3. Install your plugin with: daiv plugin install ./" + pluginName + ".so")
+		fmt.Println("1. Implement your plugin functionality in 'main.go'")
+		fmt.Println("2. Build your plugin with: cd " + pluginName + " && go build -o out/" + pluginName + ".so -buildmode=plugin")
+		fmt.Println("3. Install your plugin with: daiv plugin install ./" + pluginName + "/out/" + pluginName + ".so")
 		
 		return nil
 	},

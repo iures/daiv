@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 Iure Sales
-*/
 package cmd
 
 import (

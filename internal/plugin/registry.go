@@ -6,18 +6,18 @@ import (
 	"path/filepath"
 	"sync"
 
-	extPlugin "github.com/iures/daiv-plugin"
+	plug "github.com/iures/daivplug"
 )
 
 // Registry manages the registration and access of plugins
 type Registry struct {
 	mu       sync.RWMutex
-	Plugins  map[string]extPlugin.Plugin
+	Plugins  map[string]plug.Plugin
 }
 
 var (
 	globalRegistry = &Registry{
-		Plugins: make(map[string]extPlugin.Plugin),
+		Plugins: make(map[string]plug.Plugin),
 	}
 )
 
@@ -26,12 +26,12 @@ func GetRegistry() *Registry {
 	return globalRegistry
 }
 
-func (r *Registry) GetStandupPlugins() []extPlugin.StandupPlugin {
-	standupPlugins := []extPlugin.StandupPlugin{}
+func (r *Registry) GetStandupPlugins() []plug.StandupPlugin {
+	standupPlugins := []plug.StandupPlugin{}
 
 	for _, plugin := range r.Plugins {
 		// Check if it's a regular StandupPlugin
-		standupPlugin, ok := plugin.(extPlugin.StandupPlugin)
+		standupPlugin, ok := plugin.(plug.StandupPlugin)
 		if ok {
 			standupPlugins = append(standupPlugins, standupPlugin)
 		}
@@ -40,7 +40,7 @@ func (r *Registry) GetStandupPlugins() []extPlugin.StandupPlugin {
 	return standupPlugins
 }
 
-func (r *Registry) Register(plugin extPlugin.Plugin) error {
+func (r *Registry) Register(plugin plug.Plugin) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (r *Registry) LoadExternalPlugins() error {
 }
 
 // Retrieve plugin by name
-func (r *Registry) Get(name string) (extPlugin.Plugin, bool) {
+func (r *Registry) Get(name string) (plug.Plugin, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
   plugin, ok := r.Plugins[name]
