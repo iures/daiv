@@ -129,8 +129,8 @@ func registerPlugins() {
 	
 	// Load external plugins
 	if err := registry.LoadExternalPlugins(); err != nil {
-		slog.Error("Failed to load external plugins", "error", err)
-		// Don't exit on error, just log it
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
