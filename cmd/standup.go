@@ -60,7 +60,7 @@ func init() {
 func initFlags() {
 	// Add standup-specific flags
 	standupCmd.Flags().String("from-time", time.Now().AddDate(0, 0, -1).Truncate(24*time.Hour).Format(time.RFC3339), "Start time for the report (RFC3339 format)")
-	standupCmd.Flags().String("to-time", time.Now().Truncate(24*time.Hour).Format(time.RFC3339), "End time for the report (RFC3339 format)")
+	standupCmd.Flags().String("to-time", time.Now().Truncate(24*time.Hour).Add(24*time.Hour - time.Nanosecond).Format(time.RFC3339), "End time for the report (RFC3339 format)")
 	standupCmd.Flags().Bool("no-progress", false, "Disable progress bar")
 	standupCmd.Flags().Bool("prompt", false, "Show the prompt instead of generating the report")
 

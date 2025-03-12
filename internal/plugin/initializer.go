@@ -204,7 +204,7 @@ func missingConfigKeys(configKeys []plug.ConfigKey, configParams map[string]inte
 	missingKeys := []plug.ConfigKey{}
 
 	for _, key := range configKeys {
-		if _, ok := configParams[key.Key]; !ok && key.Required {
+		if param, ok := configParams[key.Key]; (!ok || param == nil) && key.Required {
 			missingKeys = append(missingKeys, key)
 		}
 	}
