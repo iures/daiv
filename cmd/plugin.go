@@ -13,14 +13,14 @@ These commands help you work with daiv plugins:
   - install: Install a plugin from a GitHub repository or URL
   - create: Generate a new empty plugin template
   - list: List all installed plugins
-  - search: Search for repositories with the daiv-plugin topic
+  - browse: Browse repositories with the daiv-plugin topic
   - uninstall: Remove an installed plugin
 
 Example:
   daiv plugin install username/my-plugin
   daiv plugin create my-new-plugin
   daiv plugin list
-  daiv plugin search --filter "git integration"
+  daiv plugin browse --filter "git integration"
   daiv plugin uninstall my-plugin`,
 }
 

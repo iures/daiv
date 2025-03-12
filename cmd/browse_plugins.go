@@ -9,17 +9,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var searchPluginsCmd = &cobra.Command{
-	Use:   "search",
-	Short: "Search for daiv plugins in public repositories",
-	Long: `Search for daiv plugins in public repositories.
+var browsePluginsCmd = &cobra.Command{
+	Use:   "browse",
+	Short: "Browse daiv plugins in public repositories",
+	Long: `Browse daiv plugins in public repositories.
 Finds repositories that have the topic 'daiv-plugin' associated with them.
 
 Example:
-  daiv plugin search
-  daiv plugin search --sort stars
-  daiv plugin search --limit 20
-  daiv plugin search --filter "git integration"`,
+  daiv plugin browse
+  daiv plugin browse --sort stars
+  daiv plugin browse --limit 20
+  daiv plugin browse --filter "git integration"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		
@@ -54,7 +54,7 @@ Example:
 			},
 		}
 		
-		fmt.Println("Searching for repositories with the daiv-plugin topic...\n")
+		fmt.Println("Browsing repositories with the daiv-plugin topic...\n")
 		
 		result, _, err := client.Search.Repositories(ctx, searchQuery, searchOpts)
 		if err != nil {
@@ -101,11 +101,11 @@ Example:
 }
 
 func init() {
-	pluginCmd.AddCommand(searchPluginsCmd)
+	pluginCmd.AddCommand(browsePluginsCmd)
 	
 	// Add flags
-	searchPluginsCmd.Flags().StringP("sort", "s", "updated", "Sort repositories by: stars, forks, updated")
-	searchPluginsCmd.Flags().StringP("order", "o", "desc", "Order results: asc, desc")
-	searchPluginsCmd.Flags().IntP("limit", "l", 10, "Limit the number of results")
-	searchPluginsCmd.Flags().StringP("filter", "f", "", "Filter plugins by keyword in description or readme")
+	browsePluginsCmd.Flags().StringP("sort", "s", "updated", "Sort repositories by: stars, forks, updated")
+	browsePluginsCmd.Flags().StringP("order", "o", "desc", "Order results: asc, desc")
+	browsePluginsCmd.Flags().IntP("limit", "l", 10, "Limit the number of results")
+	browsePluginsCmd.Flags().StringP("filter", "f", "", "Filter plugins by keyword in description or readme")
 } 
