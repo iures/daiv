@@ -18,14 +18,21 @@ var createPluginCmd = &cobra.Command{
 	Short:   "Generate a new empty plugin template",
 	Long:    `Generate a new empty plugin template in the current directory.
 This creates a new directory with the basic structure for a daiv plugin.
+The plugin name will be automatically prefixed with 'daiv-' if not already present.
 
 Example:
   daiv plugin create myplugin
-  daiv plugin create myplugin --dir ~/projects/daiv-plugins`,
+  daiv plugin create daiv-myplugin --dir ~/projects/daiv-plugins`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pluginName := args[0]
+		rawPluginName := args[0]
 		titleCaser := cases.Title(language.English)
+		
+		// Ensure plugin name has daiv- prefix
+		pluginName := rawPluginName
+		if !strings.HasPrefix(pluginName, "daiv-") {
+			pluginName = "daiv-" + pluginName
+		}
 		
 		// Get the directory from flag or use current directory
 		dir, _ := cmd.Flags().GetString("dir")
@@ -35,7 +42,9 @@ Example:
 		}
 		
 		// Create a valid Go identifier from the plugin name
-		goIdent := strings.ReplaceAll(pluginName, "-", "")
+		// Remove the daiv- prefix for the Go identifier
+		nameWithoutPrefix := strings.TrimPrefix(pluginName, "daiv-")
+		goIdent := strings.ReplaceAll(nameWithoutPrefix, "-", "")
 		goIdent = titleCaser.String(goIdent)
 		
 		// Prompt for GitHub username using huh
@@ -224,6 +233,7 @@ After installation, the plugin will be automatically loaded when you start daiv.
 		}
 		
 		fmt.Printf("Successfully generated plugin template in %s\n", pluginDir)
+		fmt.Println("\nPlugin name has been prefixed with 'daiv-' as per convention.")
 		fmt.Println("\nNext steps:")
 		fmt.Println("1. Implement your plugin functionality in 'main.go'")
 		fmt.Printf("2. Build your plugin with: cd %s && go build -o out/%s.so -buildmode=plugin\n", pluginDir, pluginName)
