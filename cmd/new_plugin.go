@@ -20,11 +20,19 @@ var createPluginCmd = &cobra.Command{
 This creates a new directory with the basic structure for a daiv plugin.
 
 Example:
-  daiv plugin create my-plugin`,
+  daiv plugin create myplugin
+  daiv plugin create myplugin --dir ~/projects/daiv-plugins`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		pluginName := args[0]
 		titleCaser := cases.Title(language.English)
+		
+		// Get the directory from flag or use current directory
+		dir, _ := cmd.Flags().GetString("dir")
+		if dir == "" {
+			// Use current directory if not specified
+			dir = "."
+		}
 		
 		// Create a valid Go identifier from the plugin name
 		goIdent := strings.ReplaceAll(pluginName, "-", "")
@@ -52,8 +60,11 @@ Example:
 			return fmt.Errorf("failed to get GitHub username: %w", err)
 		}
 		
+		// Create full path for the plugin directory
+		pluginDir := filepath.Join(dir, pluginName)
+		
 		// Create plugin directory
-		if err := os.Mkdir(pluginName, 0755); err != nil {
+		if err := os.MkdirAll(pluginDir, 0755); err != nil {
 			return fmt.Errorf("failed to create plugin directory: %w", err)
 		}
 		
@@ -62,13 +73,13 @@ Example:
 
 go 1.21
 
-require github.com/iures/daivplug v0.0.1
+require github.com/iures/daivplug v0.0.3
 
 // For local development, uncomment and update the path to your local daiv repository:
 // replace github.com/iures/daivplug => /absolute/path/to/local/daiv
 `, githubUsername, pluginName)
 
-		if err := os.WriteFile(filepath.Join(pluginName, "go.mod"), []byte(goModContent), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goModContent), 0644); err != nil {
 			return fmt.Errorf("failed to create go.mod file: %w", err)
 		}
 		
@@ -144,7 +155,7 @@ func (p *%sPlugin) GetStandupContext(timeRange plug.TimeRange) (plug.StandupCont
 			goIdent,
 			pluginName)
 
-		if err := os.WriteFile(filepath.Join(pluginName, "main.go"), []byte(mainContent), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(pluginDir, "main.go"), []byte(mainContent), 0644); err != nil {
 			return fmt.Errorf("failed to create main.go file: %w", err)
 		}
 		
@@ -202,21 +213,21 @@ After installation, the plugin will be automatically loaded when you start daiv.
 			pluginName,
 			pluginName)
 
-		if err := os.WriteFile(filepath.Join(pluginName, "README.md"), []byte(readmeContent), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(pluginDir, "README.md"), []byte(readmeContent), 0644); err != nil {
 			return fmt.Errorf("failed to create README.md file: %w", err)
 		}
 		
 		// Create output directory
-		outDir := filepath.Join(pluginName, "out")
+		outDir := filepath.Join(pluginDir, "out")
 		if err := os.Mkdir(outDir, 0755); err != nil {
 			return fmt.Errorf("failed to create out directory: %w", err)
 		}
 		
-		fmt.Printf("Successfully generated plugin template in ./%s\n", pluginName)
+		fmt.Printf("Successfully generated plugin template in %s\n", pluginDir)
 		fmt.Println("\nNext steps:")
 		fmt.Println("1. Implement your plugin functionality in 'main.go'")
-		fmt.Println("2. Build your plugin with: cd " + pluginName + " && go build -o out/" + pluginName + ".so -buildmode=plugin")
-		fmt.Println("3. Install your plugin with: daiv plugin install ./" + pluginName + "/out/" + pluginName + ".so")
+		fmt.Printf("2. Build your plugin with: cd %s && go build -o out/%s.so -buildmode=plugin\n", pluginDir, pluginName)
+		fmt.Printf("3. Install your plugin with: daiv plugin install %s/out/%s.so\n", pluginDir, pluginName)
 		
 		return nil
 	},
@@ -224,4 +235,5 @@ After installation, the plugin will be automatically loaded when you start daiv.
 
 func init() {
 	pluginCmd.AddCommand(createPluginCmd)
+	createPluginCmd.Flags().String("dir", "", "Directory where the plugin will be created (default is current directory)")
 } 

@@ -2,7 +2,7 @@
 
 BUILD_OUTPUT=out/daiv
 
-.PHONY: all build build-worklog run
+.PHONY: all build build-worklog run delete-test-plugin create-test-plugin
 
 # Default target: build and run the project
 all: run
@@ -18,3 +18,15 @@ build-worklog: build
 # Run the built executable with the 'standup' argument
 run: build-worklog
 	$(BUILD_OUTPUT) standup --prompt
+
+delete-test-plugin: build
+	rm -rf plugins/test
+
+create-test-plugin: delete-test-plugin
+	$(BUILD_OUTPUT) plugin create test --dir ./plugins
+
+test-plugin: create-test-plugin
+	cd ./plugins/test && go mod tidy && go build --buildmode=plugin -o .out/test.so
+
+# build-plugins:
+# 	$(foreach file, $(wildcard ./plugins/*), go build -buildmode=plugin -o $(file)/speaker.so $(file)/speaker.go;)
