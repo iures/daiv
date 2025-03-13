@@ -280,8 +280,7 @@ clean:
 			return fmt.Errorf("failed to create Makefile: %w", err)
 		}
 
-		// Initialize git repository (always)
-		// Save current directory
+		// Save current directory for later
 		currentDir, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
@@ -300,6 +299,16 @@ clean:
 			return fmt.Errorf("failed to initialize git repository: %w", err)
 		}
 
+		// Run make build
+		fmt.Println("Building plugin...")
+		makeCmd := exec.Command("make", "build")
+		makeOutput, err := makeCmd.CombinedOutput()
+		if err != nil {
+			// Change back to original directory before returning error
+			os.Chdir(currentDir)
+			return fmt.Errorf("failed to build plugin: %w\nOutput: %s", err, string(makeOutput))
+		}
+
 		// Change back to original directory
 		if err := os.Chdir(currentDir); err != nil {
 			return fmt.Errorf("failed to change back to original directory: %w", err)
@@ -308,11 +317,11 @@ clean:
 		fmt.Printf("Successfully generated plugin template in %s\n", pluginDir)
 		fmt.Println("\nPlugin name has been prefixed with 'daiv-' as per convention.")
 		fmt.Println("Git repository has been initialized with a .gitignore file.")
-		fmt.Println("A Makefile has been created with build, install, clean, and tidy commands.")
+		fmt.Println("Plugin has been built successfully. The compiled plugin is available at out/" + pluginName + ".so")
 		
 		fmt.Println("\nNext steps:")
 		fmt.Println("1. Implement your plugin functionality in 'main.go'")
-		fmt.Printf("2. Build and install your plugin with: cd %s && make install\n", pluginDir)
+		fmt.Printf("2. Install your plugin with: cd %s && make install\n", pluginDir)
 		
 		return nil
 	},
