@@ -6,6 +6,7 @@ Daiv is a command-line tool designed to streamline developer workflows and enhan
 
 - Generate standup reports automatically (`daiv standup`)
 - Generate relevant pull requests report (`daiv relevantPrs`)
+- Extensible plugin system for custom integrations
 - More features coming soon...
 
 ## Installation
@@ -116,6 +117,44 @@ daiv relevantPrs [flags]
       --config string          config file (default is $HOME/.daiv.yaml)
 ```
 
+### Plugin Management
+
+Daiv supports plugins that can extend its functionality. You can create, install, and manage plugins using the `daiv plugin` command.
+
+#### Creating a Plugin
+
+```bash
+daiv plugin create myplugin
+```
+
+This will generate a new plugin template in the current directory.
+
+#### Installing a Plugin
+
+```bash
+daiv plugin install ./path/to/plugin.so
+```
+
+Or install directly from GitHub:
+
+```bash
+daiv plugin install username/repo-name
+```
+
+#### Listing Installed Plugins
+
+```bash
+daiv plugin list
+```
+
+#### Removing a Plugin
+
+```bash
+daiv plugin remove plugin-name
+```
+
+For more information about plugins, see the [Plugin Documentation](docs/plugins/README.md).
+
 ## Troubleshooting Section:
 Common issues and their solutions, such as:
 
@@ -131,9 +170,16 @@ Make sure you have a valid API key and are not exceeding the rate limits.
 ### LLM integration issues
 Make sure your LLM API key is correct and you have the necessary permissions.
 
+### Plugin issues
+If you're having issues with plugins, check the [Plugin Troubleshooting Guide](docs/plugins/README.md#troubleshooting).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Developing Plugins
+
+If you want to develop plugins for Daiv, check out the [Getting Started with Plugins](docs/plugins/GETTING_STARTED.md) guide.
 
 ## License
 
