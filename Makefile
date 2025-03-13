@@ -25,9 +25,3 @@ build-test-plugin: create-test-plugin
 
 test-plugin: build-test-plugin
 	$(BUILD_OUTPUT) plugin install ./plugins/daiv-test/out/daiv-test.so
-
-build-github-plugin:
-	cd ../plugins/daiv-github && go mod tidy && go build --buildmode=plugin -o ./out/daiv-github.so
-
-install-github-plugin: build-github-plugin
-	$(BUILD_OUTPUT) plugin install ../plugins/daiv-github/out/daiv-github.so
