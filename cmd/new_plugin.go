@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -47,28 +46,6 @@ Example:
 		goIdent := strings.ReplaceAll(nameWithoutPrefix, "-", "")
 		goIdent = titleCaser.String(goIdent)
 		
-		// Prompt for GitHub username using huh
-		var githubUsername string
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("GitHub Username").
-					Description("Your GitHub username for repository references").
-					Placeholder("username").
-					Value(&githubUsername).
-					Validate(func(s string) error {
-						if s == "" {
-							return fmt.Errorf("GitHub username is required")
-						}
-						return nil
-					}),
-			),
-		)
-		
-		if err := form.Run(); err != nil {
-			return fmt.Errorf("failed to get GitHub username: %w", err)
-		}
-		
 		// Create full path for the plugin directory
 		pluginDir := filepath.Join(dir, pluginName)
 		
@@ -78,7 +55,7 @@ Example:
 		}
 		
 		// Create go.mod file
-		goModContent := fmt.Sprintf(`module github.com/%s/%s
+		goModContent := fmt.Sprintf(`module /%s
 
 go 1.21
 
@@ -86,7 +63,7 @@ require github.com/iures/daivplug v0.0.3
 
 // For local development, uncomment and update the path to your local daiv repository:
 // replace github.com/iures/daivplug => /absolute/path/to/local/daiv
-`, githubUsername, pluginName)
+`, pluginName)
 
 		if err := os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goModContent), 0644); err != nil {
 			return fmt.Errorf("failed to create go.mod file: %w", err)
@@ -178,14 +155,14 @@ A plugin for the daiv CLI tool.
 ### From GitHub
 
 ` + "```" + `
-daiv plugin install %s/%s
+daiv plugin install YOUR_GITHUB_USERNAME/%s
 ` + "```" + `
 
 ### From Source
 
 1. Clone the repository:
    ` + "```" + `
-   git clone https://github.com/%s/%s.git
+   git clone https://github.com/YOUR_GITHUB_USERNAME/%s.git
    cd %s
    ` + "```" + `
 
@@ -213,9 +190,7 @@ After installation, the plugin will be automatically loaded when you start daiv.
 
 `, 
 			titleCaser.String(strings.ReplaceAll(pluginName, "-", " ")), 
-			githubUsername, 
 			pluginName, 
-			githubUsername,
 			pluginName,
 			pluginName,
 			pluginName,
