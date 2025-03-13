@@ -55,10 +55,15 @@ Example:
 			return fmt.Errorf("failed to create plugin directory: %w", err)
 		}
 		
-		// Create plugin implementation directory
+		// Create plugin implementation directories
 		pluginImplDir := filepath.Join(pluginDir, "plugin")
 		if err := os.MkdirAll(pluginImplDir, 0755); err != nil {
 			return fmt.Errorf("failed to create plugin implementation directory: %w", err)
+		}
+		
+		contextsDir := filepath.Join(pluginImplDir, "contexts")
+		if err := os.MkdirAll(contextsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create contexts directory: %w", err)
 		}
 		
 		// Create go.mod file
@@ -97,6 +102,7 @@ var Plugin plug.Plugin = plugin.New()
 
 import (
 	plug "github.com/iures/daivplug"
+	"%s/plugin/contexts" // Import contexts package
 )
 
 // %sPlugin implements the Plugin interface
@@ -146,13 +152,11 @@ func (p *%sPlugin) Shutdown() error {
 
 // GetStandupContext implements the StandupPlugin interface
 func (p *%sPlugin) GetStandupContext(timeRange plug.TimeRange) (plug.StandupContext, error) {
-	// TODO: Implement your plugin-specific standup context generation
-	return plug.StandupContext{
-		PluginName: p.Name(),
-		Content:    "Example content from %s plugin",
-	}, nil
+	// Delegate to the standup context implementation
+	return contexts.GetStandupContext(p.Name(), timeRange)
 }
 `, 
+			pluginName,
 			goIdent, 
 			goIdent,
 			goIdent,
@@ -164,11 +168,33 @@ func (p *%sPlugin) GetStandupContext(timeRange plug.TimeRange) (plug.StandupCont
 			goIdent,
 			pluginName,
 			goIdent,
-			goIdent,
-			pluginName)
+			goIdent)
 
 		if err := os.WriteFile(filepath.Join(pluginImplDir, "plugin.go"), []byte(pluginImplContent), 0644); err != nil {
 			return fmt.Errorf("failed to create plugin implementation file: %w", err)
+		}
+		
+		// Create standup context file
+		standupContextContent := fmt.Sprintf(`package contexts
+
+import (
+	plug "github.com/iures/daivplug"
+)
+
+// GetStandupContext generates the standup context for the plugin
+func GetStandupContext(pluginName string, timeRange plug.TimeRange) (plug.StandupContext, error) {
+	// TODO: Implement your plugin-specific standup context generation
+	
+	// Example implementation
+	return plug.StandupContext{
+		PluginName: pluginName,
+		Content:    "Example content from " + pluginName + " plugin",
+	}, nil
+}
+`)
+
+		if err := os.WriteFile(filepath.Join(contextsDir, "standup.go"), []byte(standupContextContent), 0644); err != nil {
+			return fmt.Errorf("failed to create standup context file: %w", err)
 		}
 		
 		// Create README.md
@@ -179,7 +205,9 @@ A plugin for the daiv CLI tool.
 ## Project Structure
 
 - **main.go**: Plugin entry point that exports the Plugin interface
-- **plugin/plugin.go**: Main plugin implementation code
+- **plugin/plugin.go**: Core plugin implementation (configuration, lifecycle, etc.)
+- **plugin/contexts/**: Directory containing context providers for LLM integration
+  - **plugin/contexts/standup.go**: Implementation of the standup context provider
 - **Makefile**: Build automation for the plugin
 
 ## Installation
@@ -229,6 +257,12 @@ This plugin includes a Makefile with the following commands:
 - ` + "`make install`" + `: Build and install the plugin
 - ` + "`make clean`" + `: Clean build artifacts
 - ` + "`make tidy`" + `: Run go mod tidy
+
+### Adding New Context Providers
+
+As the daiv Plugin interface grows, you can add new context providers in the
+` + "`plugin/contexts/`" + ` directory, following the pattern established by ` + "`standup.go`" + `.
+These contexts provide information to the LLM when running daiv commands.
 
 `, 
 			titleCaser.String(strings.ReplaceAll(pluginName, "-", " ")), 
@@ -351,10 +385,14 @@ clean:
 		fmt.Println("Plugin has been built successfully. The compiled plugin is available at out/" + pluginName + ".so")
 		fmt.Println("\nProject structure:")
 		fmt.Println("- main.go: Plugin entry point that exports the Plugin interface")
-		fmt.Println("- plugin/plugin.go: Main plugin implementation code")
+		fmt.Println("- plugin/plugin.go: Core plugin implementation")
+		fmt.Println("- plugin/contexts/standup.go: Standup context provider implementation")
 		
 		fmt.Println("\nNext steps:")
-		fmt.Println("1. Implement your plugin functionality in plugin/plugin.go")
+		fmt.Println("1. Implement your plugin functionality:")
+		fmt.Println("   - Core plugin logic in plugin/plugin.go")
+		fmt.Println("   - Standup context provider in plugin/contexts/standup.go")
+		fmt.Println("   - Add new context providers in the plugin/contexts/ directory as needed")
 		fmt.Printf("2. Install your plugin with: cd %s && make install\n", pluginDir)
 		
 		return nil
