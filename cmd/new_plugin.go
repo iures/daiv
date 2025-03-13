@@ -169,11 +169,12 @@ daiv plugin install YOUR_GITHUB_USERNAME/%s
 
 2. Build the plugin:
    ` + "```" + `
+   make install
+   ` + "```" + `
+   
+   Or manually:
+   ` + "```" + `
    go build -o out/%s.so -buildmode=plugin
-   ` + "```" + `
-
-3. Install the plugin:
-   ` + "```" + `
    daiv plugin install ./out/%s.so
    ` + "```" + `
 
@@ -188,6 +189,15 @@ You can configure these settings when you first run daiv after installing the pl
 ## Usage
 
 After installation, the plugin will be automatically loaded when you start daiv.
+
+## Development
+
+This plugin includes a Makefile with the following commands:
+
+- ` + "`make build`" + `: Build the plugin
+- ` + "`make install`" + `: Build and install the plugin
+- ` + "`make clean`" + `: Clean build artifacts
+- ` + "`make tidy`" + `: Run go mod tidy
 
 `, 
 			titleCaser.String(strings.ReplaceAll(pluginName, "-", " ")), 
@@ -246,6 +256,29 @@ Thumbs.db
 		if err := os.WriteFile(filepath.Join(pluginDir, ".gitignore"), []byte(gitignoreContent), 0644); err != nil {
 			return fmt.Errorf("failed to create .gitignore file: %w", err)
 		}
+		
+		// Create Makefile
+		makefileContent := fmt.Sprintf(`PLUGIN_NAME=%s
+
+.PHONY: build install clean tidy
+
+install: build
+	cp ./out/$(PLUGIN_NAME).so ~/.daiv/plugins/
+
+build: tidy
+	go build -o ./out/$(PLUGIN_NAME).so -buildmode=plugin main.go
+
+tidy: clean
+	go mod tidy
+
+clean:
+	rm -f ./out/$(PLUGIN_NAME).so
+	rm -f ~/.daiv/plugins/$(PLUGIN_NAME).so
+`, pluginName)
+
+		if err := os.WriteFile(filepath.Join(pluginDir, "Makefile"), []byte(makefileContent), 0644); err != nil {
+			return fmt.Errorf("failed to create Makefile: %w", err)
+		}
 
 		// Initialize git repository (always)
 		// Save current directory
@@ -275,11 +308,11 @@ Thumbs.db
 		fmt.Printf("Successfully generated plugin template in %s\n", pluginDir)
 		fmt.Println("\nPlugin name has been prefixed with 'daiv-' as per convention.")
 		fmt.Println("Git repository has been initialized with a .gitignore file.")
+		fmt.Println("A Makefile has been created with build, install, clean, and tidy commands.")
 		
 		fmt.Println("\nNext steps:")
 		fmt.Println("1. Implement your plugin functionality in 'main.go'")
-		fmt.Printf("2. Build your plugin with: cd %s && go build -o out/%s.so -buildmode=plugin\n", pluginDir, pluginName)
-		fmt.Printf("3. Install your plugin with: daiv plugin install %s/out/%s.so\n", pluginDir, pluginName)
+		fmt.Printf("2. Build and install your plugin with: cd %s && make install\n", pluginDir)
 		
 		return nil
 	},
