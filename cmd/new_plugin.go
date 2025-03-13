@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -55,7 +56,7 @@ Example:
 		}
 		
 		// Create go.mod file
-		goModContent := fmt.Sprintf(`module /%s
+		goModContent := fmt.Sprintf(`module %s
 
 go 1.21
 
@@ -206,9 +207,75 @@ After installation, the plugin will be automatically loaded when you start daiv.
 		if err := os.Mkdir(outDir, 0755); err != nil {
 			return fmt.Errorf("failed to create out directory: %w", err)
 		}
+
+		// Create .gitignore file
+		gitignoreContent := `# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with 'go test -c'
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+/vendor/
+/go.sum
+
+# Go workspace file
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Plugin build output
+/out/
+`
+
+		if err := os.WriteFile(filepath.Join(pluginDir, ".gitignore"), []byte(gitignoreContent), 0644); err != nil {
+			return fmt.Errorf("failed to create .gitignore file: %w", err)
+		}
+
+		// Initialize git repository (always)
+		// Save current directory
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+
+		// Change to plugin directory
+		if err := os.Chdir(pluginDir); err != nil {
+			return fmt.Errorf("failed to change to plugin directory: %w", err)
+		}
+
+		// Initialize git repository
+		gitInit := exec.Command("git", "init")
+		if err := gitInit.Run(); err != nil {
+			// Change back to original directory before returning error
+			os.Chdir(currentDir)
+			return fmt.Errorf("failed to initialize git repository: %w", err)
+		}
+
+		// Change back to original directory
+		if err := os.Chdir(currentDir); err != nil {
+			return fmt.Errorf("failed to change back to original directory: %w", err)
+		}
 		
 		fmt.Printf("Successfully generated plugin template in %s\n", pluginDir)
 		fmt.Println("\nPlugin name has been prefixed with 'daiv-' as per convention.")
+		fmt.Println("Git repository has been initialized with a .gitignore file.")
+		
 		fmt.Println("\nNext steps:")
 		fmt.Println("1. Implement your plugin functionality in 'main.go'")
 		fmt.Printf("2. Build your plugin with: cd %s && go build -o out/%s.so -buildmode=plugin\n", pluginDir, pluginName)
