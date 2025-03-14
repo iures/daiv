@@ -2,12 +2,10 @@
 
 BUILD_OUTPUT=out/daiv
 
-.PHONY: all build build-worklog run delete-test-plugin create-test-plugin build-test-plugin test-plugin
+.PHONY: all build build-worklog standup delete-test-plugin create-test-plugin build-test-plugin test-plugin
 
-# Default target: build and run the project
-all: run
+all: standup
 
-# Build the project
 build:
 	go build -o $(BUILD_OUTPUT) .
 
