@@ -3,15 +3,46 @@
 *.exe~
 *.dll
 *.so
-daiv
-out/**
+*.dylib
+*.bin
 
 # Test binary, built with `go test -c`
 *.test
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Output of the go coverage tool
+*.out
+coverage.html
 
-# env file
-.env
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
 .aider*
+
+# Build output
+bin/
+dist/
+build/
+out/
+
+# Debug files
+debug
+
+# Environment variables
+.env
+.env.local
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/ 
