@@ -10,7 +10,8 @@ import (
 )
 
 var browsePluginsCmd = &cobra.Command{
-	Use:   "browse",
+	Use: "browse",
+	Aliases: []string{"b"},
 	Short: "Browse daiv plugins in public repositories",
 	Long: `Browse daiv plugins in public repositories.
 Finds repositories that have the topic 'daiv-plugin' associated with them.

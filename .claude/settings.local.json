@@ -1,0 +1,9 @@
+{
+  "enableAllProjectMcpServers": false,
+  "permissions": {
+    "allow": [
+      "Bash(go help:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
